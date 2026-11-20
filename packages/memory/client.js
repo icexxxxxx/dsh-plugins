@@ -23,6 +23,7 @@ window.__ModuleLoader__.load({
       'settings.scope.project': 'Project',
       'settings.dir.label': 'Working directory',
       'settings.dir.placeholder': '/Users/me/codes/project',
+      'settings.dir.hint': 'Absolute path, or start with ~/ . The file is <dir>/.dsh/memory/MEMORY.md.',
       'settings.dir.load': 'Load',
       'settings.loading': 'Loading…',
       'settings.saving': 'Saving…',
@@ -43,6 +44,7 @@ window.__ModuleLoader__.load({
       'settings.scope.global': '全局',
       'settings.scope.project': '项目',
       'settings.dir.label': '工作目录',
+      'settings.dir.hint': '绝对路径，可用 ~/ 开头。文件是 <目录>/.dsh/memory/MEMORY.md。',
       'settings.dir.placeholder': '/Users/me/codes/project',
       'settings.dir.load': '读取',
       'settings.loading': '读取中…',
@@ -98,7 +100,13 @@ window.__ModuleLoader__.load({
     function MemoryPanel(props) {
       const t = translator(props.t)
       const [scope, setScope] = useState('global')
-      const [dir, setDir] = useState('')
+      const [dir, setDir] = useState(function () {
+        try {
+          return window.localStorage.getItem('icex-memory.projectDir') ?? ''
+        } catch (error) {
+          return ''
+        }
+      })
       const [text, setText] = useState('')
       const [path, setPath] = useState('')
       const [entries, setEntries] = useState(0)
@@ -112,9 +120,20 @@ window.__ModuleLoader__.load({
       }
 
       async function load() {
+        if (scope === 'project' && dir.trim() === '') {
+          setMessage(null)
+          return
+        }
         setBusy(true)
         setMessage(null)
         try {
+          if (scope === 'project') {
+            try {
+              window.localStorage.setItem('icex-memory.projectDir', dir.trim())
+            } catch (error) {
+              // A blocked localStorage only costs the remembered directory.
+            }
+          }
           const response = await fetch(endpoint(), { credentials: 'same-origin' })
           const body = await response.json()
           if (body.ok !== true) throw new Error(body.error ?? response.status)
@@ -186,7 +205,7 @@ window.__ModuleLoader__.load({
                 setDir(event.target.value)
               },
               onKeyDown: function (event) {
-                if (event.key === 'Enter') void load()
+                if (event.key === 'Enter' && event.currentTarget.value.trim() !== '') void load()
               },
             }),
             h('button', {
@@ -196,7 +215,8 @@ window.__ModuleLoader__.load({
               onClick: function () {
                 void load()
               },
-            }, t('settings.dir.load')))
+            }, t('settings.dir.load')),
+            h('div', { className: 'icex-memory-hint' }, t('settings.dir.hint')))
           : null,
         h('textarea', {
           className: 'icex-memory-text',

@@ -429,12 +429,19 @@ function jsonResponse(body, status = 200) {
 }
 
 /** Resolve the store file named by the editor's query string. */
+/** Expand a leading ~/ so the settings page can take a home-relative path. */
+function expandHome(dir) {
+  if (dir === '~') return homedir()
+  if (dir.startsWith('~/')) return join(homedir(), dir.slice(2))
+  return dir
+}
+
 function editorTarget(params) {
   if (params.get('scope') !== 'project') return { scope: 'global', file: GLOBAL_FILE }
-  const dir = params.get('dir') ?? ''
-  if (!dir.startsWith('/')) return { scope: 'project', error: 'project scope needs an absolute directory' }
-  if (!existsSync(dir)) return { scope: 'project', error: 'directory does not exist' }
-  return { scope: 'project', file: projectFile(dir) }
+  const dir = expandHome(String(params.get('dir') ?? '').trim())
+  if (!dir.startsWith('/')) return { scope: 'project', error: 'project scope needs an absolute directory (a leading ~/ works)' }
+  if (!existsSync(dir)) return { scope: 'project', error: 'directory does not exist: ' + dir }
+  return { scope: 'project', dir, file: projectFile(dir) }
 }
 
 /** GET reads a store, POST replaces it; both are owner-only by the route registry. */

@@ -73,6 +73,12 @@ const secretWrite = await m.handleEditorRequest(new Request('http://127.0.0.1/ap
 }))
 check('editor rejects credentials', secretWrite.status === 400)
 
+const homeProject = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=project&dir=~'))
+check('project scope expands ~', homeProject.status === 200)
+
+const emptyProject = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=project&dir='))
+check('empty project dir is refused', emptyProject.status === 400)
+
 const relativeProject = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=project&dir=relative/path'))
 check('project scope needs absolute dir', relativeProject.status === 400)
 
