@@ -8,6 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "node --check packages/fixer/client.js && node --check packages/memory/index.js"
+    "check": "node --check packages/fixer/client.js && node --check packages/memory/index.js",
+    "selftest": "node scripts/selftest.mjs",
+    "release": "node scripts/release.mjs"
   }
 }
