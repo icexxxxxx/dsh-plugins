@@ -43,6 +43,16 @@ const git = (args, options = {}) => execFileSync('git', args, {
 
 const gitCapture = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 
+/** Network git commands: try direct, then the local proxy (this host often needs it). */
+const gitNetwork = (args) => {
+  try {
+    return gitCapture(args)
+  } catch (error) {
+    log('git ' + args[0] + ' failed directly (' + String(error.message).split('\n')[0] + '); retrying through ' + PROXY)
+    return gitCapture(['-c', 'http.proxy=' + PROXY, '-c', 'https.proxy=' + PROXY, ...args])
+  }
+}
+
 const readJson = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'))
 const writeJson = (path, value) => writeFileSync(join(root, path), JSON.stringify(value, null, 2) + '\n')
 
@@ -78,7 +88,7 @@ async function main() {
   log('checking repository state')
   if (gitCapture(['status', '--porcelain']) !== '') fail('working tree is dirty; commit or stash first')
   if (gitCapture(['rev-parse', '--abbrev-ref', 'HEAD']) !== 'main') fail('release from the main branch')
-  if (!noPush) gitCapture(['fetch', 'origin', 'main'])
+  if (!noPush) gitNetwork(['fetch', 'origin', 'main'])
   if (!noPush && gitCapture(['rev-parse', 'HEAD']) !== gitCapture(['rev-parse', 'origin/main'])) fail('local main is not equal to origin/main; pull or push first')
 
   log('running self-test')
@@ -128,14 +138,8 @@ async function main() {
   }
 
   log('pushing main and ' + tag)
-  try {
-    gitCapture(['push', 'origin', 'main'])
-    gitCapture(['push', 'origin', tag])
-  } catch (error) {
-    log('direct push failed (' + String(error.message).split('\n')[0] + '); retrying through ' + PROXY)
-    git(['-c', 'http.proxy=' + PROXY, '-c', 'https.proxy=' + PROXY, 'push', 'origin', 'main'])
-    git(['-c', 'http.proxy=' + PROXY, '-c', 'https.proxy=' + PROXY, 'push', 'origin', tag])
-  }
+  gitNetwork(['push', 'origin', 'main'])
+  gitNetwork(['push', 'origin', tag])
 
   log('waiting for the publish workflow')
   const run = await waitForRun(tag)
