@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Icex DSH Memory",
+    "description": "跨会话记忆：会话开始注入一段有预算的摘要，并用一个 memory 工具把事实写进带来源的 Markdown 存储。",
+    "detail": "docs/DETAIL.md"
+  }
+}

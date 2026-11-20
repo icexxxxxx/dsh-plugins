@@ -1,0 +1,13 @@
+{
+  "name": "@icex/dsh-plugins",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Personal DeepSeek Harness plugins: input anchor rail + window summon, and cross-session memory.",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "node --check packages/fixer/client.js && node --check packages/memory/index.js"
+  }
+}

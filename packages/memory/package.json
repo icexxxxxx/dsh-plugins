@@ -1,0 +1,25 @@
+{
+  "name": "icex-dsh-memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-session memory for DeepSeek Harness: a budgeted MEMORY.md digest injected once per session, plus one memory tool with provenance back to the producing session.",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

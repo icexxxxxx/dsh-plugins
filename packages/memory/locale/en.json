@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Icex DSH Memory",
+    "description": "Cross-session memory: a budgeted digest injected at session start, plus a memory tool that keeps facts in a Markdown store with provenance.",
+    "detail": "docs/DETAIL.md"
+  }
+}
