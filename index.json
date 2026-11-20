@@ -1,0 +1,93 @@
+{
+  "format": 1,
+  "title": {
+    "en": "icex DSH plugins",
+    "zh": "icex 的 DSH 插件"
+  },
+  "description": {
+    "en": "Personal DeepSeek Harness plugins: cross-session memory and a small conversation UI bundle.",
+    "zh": "个人 DeepSeek Harness 插件：跨会话记忆，以及一个会话界面小 bundle。"
+  },
+  "metadata": {
+    "categories": {
+      "memory": {
+        "title": { "en": "Memory", "zh": "记忆" }
+      },
+      "ui": {
+        "title": { "en": "Interface", "zh": "界面" }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "icex-dsh-memory",
+      "title": { "en": "Icex DSH Memory", "zh": "Icex DSH Memory" },
+      "description": {
+        "en": "Cross-session memory: a budgeted digest injected at session start, plus a memory tool backed by a Markdown store with provenance.",
+        "zh": "跨会话记忆：会话开始注入有预算的摘要，并用一个 memory 工具写入带来源的 Markdown 存储。"
+      },
+      "author": "icex",
+      "homepage": "https://github.com/icexxxxxx/dsh-plugins/tree/main/packages/memory",
+      "icon": "https://raw.githubusercontent.com/icexxxxxx/dsh-plugins/main/packages/memory/icon.svg",
+      "repository": {
+        "url": "https://github.com/icexxxxxx/dsh-plugins",
+        "directory": "packages/memory"
+      },
+      "metadata": {
+        "category": "memory",
+        "keywords": ["memory", "cross-session", "context"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.2.0",
+          "publishTimestamp": 1795163462,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/icexxxxxx/dsh-plugins",
+            "commit": "7fec08d6571e30e6b9636f45fca8f66578fabc85",
+            "path": "packages/memory"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "icex-dsh-fixer",
+      "title": { "en": "Icex DSH Fixer", "zh": "Icex DSH Fixer" },
+      "description": {
+        "en": "Left-side input anchor rail, and double-tap right Option to summon the window on the screen under the pointer.",
+        "zh": "左侧输入锚点导航，双击右 Option 把窗口摆到指针所在屏幕并置顶。"
+      },
+      "author": "icex",
+      "homepage": "https://github.com/icexxxxxx/dsh-plugins/tree/main/packages/fixer",
+      "icon": "https://raw.githubusercontent.com/icexxxxxx/dsh-plugins/main/packages/fixer/icon.svg",
+      "repository": {
+        "url": "https://github.com/icexxxxxx/dsh-plugins",
+        "directory": "packages/fixer"
+      },
+      "metadata": {
+        "category": "ui",
+        "keywords": ["rail", "navigation", "window"],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.2.1",
+          "publishTimestamp": 1795163462,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/icexxxxxx/dsh-plugins",
+            "commit": "7fec08d6571e30e6b9636f45fca8f66578fabc85",
+            "path": "packages/fixer"
+          },
+          "engines": {}
+        }
+      ]
+    }
+  ]
+}

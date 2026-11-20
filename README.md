@@ -33,6 +33,38 @@ cd dsh-plugins
 - `fixer`：设置存在浏览器 `localStorage`；原生 helper 的日志在 `/tmp/icex-dsh-fixer-summon-<uid>.log`。
 - `memory`：`~/.dsh/memory/MEMORY.md`（全局）和 `<cwd>/.dsh/memory/MEMORY.md`（项目），纯 Markdown，可手改、可版本化。
 
+## 作为插件源给其他人用
+
+仓库根目录的 [`index.json`](index.json) 是 DSH 插件市场索引（format 1），已经用 DSH 自带的 `parseMarketIndex` 校验通过。
+
+**方式一：加索引（推荐）**
+
+在 DSH 的 **Plugins → Discover** 里添加索引地址，或在 profile 的 `cordis.patch.yml` 里：
+
+```yaml
+- id: plugin-market
+  name: "@deepseek-ai/dsh-plugin-market"
+  config:
+    indexes:
+      - https://raw.githubusercontent.com/icexxxxxx/dsh-plugins/main/index.json
+      # 国内网络可用镜像：
+      - https://cdn.jsdelivr.net/gh/icexxxxxx/dsh-plugins@main/index.json
+```
+
+之后在 Discover 里搜 `icex` 就能看到两个插件，点安装即可。
+
+**方式二：手动装某个包**
+
+索引里的版本目前指向 git（npm 首发还在审核），安装论证就是：
+
+```sh
+dsh plugin --profile desktop add "git+https://github.com/icexxxxxx/dsh-plugins.git#7fec08d6571e30e6b9636f45fca8f66578fabc85&path:/packages/memory"
+```
+
+等 npm 审核通过，索引里换成 `type: npm` 的版本，安装就退化成 `icex-dsh-memory@0.2.0`。
+
+要求：对方机器上有 `git`（pnpm 需要它拉取源码），网络能到 GitHub（或走自己的代理）。
+
 ## 发布
 
 两个包在以 `v*` 打 tag 时由 GitHub Actions 发布到 npmjs（见 [.github/workflows/publish.yml](.github/workflows/publish.yml)）。
