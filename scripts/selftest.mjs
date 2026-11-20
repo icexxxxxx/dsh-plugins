@@ -39,5 +39,42 @@ check('consolidate merges', report.merged === 1, report.merged)
 check('prose preserved', readFileSync(c, 'utf8').includes('keep this prose'))
 check('archive written', readFileSync(m.archivePath(c), 'utf8').includes('pnpm'))
 
+
+// settings-page editor: route registration, read, write, guards
+let captured = null
+const fakeConnection = {
+  fetch: { register: (route) => { captured = route; return () => {} } },
+}
+const fakeCtx = {
+  get: (key) => (key === 'connection' ? fakeConnection : undefined),
+  effect: (fn) => { const dispose = fn(); return typeof dispose === 'function' ? dispose : () => {} },
+  systemPrompt: { section: () => {} },
+  on: () => {},
+  logger: { info: () => {}, warn: () => {} },
+}
+m.apply(fakeCtx, {})
+check('editor route registered', captured !== null && captured.path === '/api/icex-memory' && captured.methods.includes('POST'))
+
+const readBack = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=global'))
+const readBody = await readBack.json()
+check('editor reads store', readBack.status === 200 && readBody.ok === true && readBody.text.includes('回答要结论先行'))
+
+const writeBack = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=global', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ text: '- [pref] 编辑后的内容 <!-- id=abc123 src=manual at=2026-11-20 -->\n' }),
+}))
+check('editor writes store', writeBack.status === 200 && readFileSync(store, 'utf8').includes('编辑后的内容'))
+
+const secretWrite = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=global', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ text: 'api_key=abcd1234efgh' }),
+}))
+check('editor rejects credentials', secretWrite.status === 400)
+
+const relativeProject = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=project&dir=relative/path'))
+check('project scope needs absolute dir', relativeProject.status === 400)
+
 console.log(failures.length === 0 ? 'SELFTEST OK' : failures.length + ' FAILED')
 process.exit(failures.length === 0 ? 0 : 1)

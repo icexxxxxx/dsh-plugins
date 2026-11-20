@@ -438,7 +438,7 @@ function editorTarget(params) {
 }
 
 /** GET reads a store, POST replaces it; both are owner-only by the route registry. */
-async function handleEditorRequest(request) {
+export async function handleEditorRequest(request) {
   const target = editorTarget(new URL(request.url).searchParams)
   if (target.error !== undefined) return jsonResponse({ ok: false, error: target.error }, 400)
 
