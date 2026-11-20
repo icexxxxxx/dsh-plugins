@@ -113,7 +113,7 @@ async function main() {
     manifest.version = version
     writeJson(manifestPath, manifest)
   }
-  git(['add', '--', PACKAGES.map((pkg) => pkg.dir + '/package.json')])
+  git(['add', '--', ...PACKAGES.map((pkg) => pkg.dir + '/package.json')])
   git(['commit', '-m', 'release: ' + tag])
 
   const sha = gitCapture(['rev-parse', 'HEAD'])
