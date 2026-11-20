@@ -458,11 +458,11 @@ export function apply(ctx, config) {
     return
   }
   if (ctx.tools === undefined) return
-  registerTool(ctx, TOOLS.defineTool)
+  registerTool(ctx, TOOLS.defineTool, tuning)
 }
 
 /** Register the single `memory` tool backed by the Markdown stores. */
-function registerTool(ctx, defineTool) {
+function registerTool(ctx, defineTool, tuning) {
   const output = {
     schema: {
       type: 'object',
