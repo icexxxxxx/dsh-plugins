@@ -1,7 +1,6 @@
 {
   "name": "icex-dsh-memory",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
   "type": "module",
   "description": "Cross-session memory for DeepSeek Harness: a budgeted MEMORY.md digest injected once per session, plus one memory tool with provenance back to the producing session.",
   "exports": {
@@ -21,5 +20,20 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  }
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icexxxxxx/dsh-plugins.git",
+    "directory": "packages/memory"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh"
+  ]
 }

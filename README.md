@@ -33,6 +33,28 @@ cd dsh-plugins
 - `fixer`：设置存在浏览器 `localStorage`；原生 helper 的日志在 `/tmp/icex-dsh-fixer-summon-<uid>.log`。
 - `memory`：`~/.dsh/memory/MEMORY.md`（全局）和 `<cwd>/.dsh/memory/MEMORY.md`（项目），纯 Markdown，可手改、可版本化。
 
+## 发布
+
+两个包在以 `v*` 打 tag 时由 GitHub Actions 发布到 npmjs（见 [.github/workflows/publish.yml](.github/workflows/publish.yml)）。
+
+首次需要两步（我没法替你完成，都属于账号级操作）：
+
+1. 在 npmjs.com 建一个 Scope 为空的 **Automation** token（或 Granular token，勾选两张包的读写）。
+2. 把它存成仓库 secret：`gh secret set NPM_TOKEN --repo icexxxxxx/dsh-plugins`。
+
+之后：
+
+```sh
+git tag v0.2.1 && git push origin v0.2.1
+```
+
+发布成功就能一条命令安装：
+
+```sh
+dsh plugin --profile desktop add icex-dsh-memory
+dsh plugin --profile desktop add icex-dsh-fixer
+```
+
 ## 开发
 
 两个包都是"无构建步骤"的 ESM：改完文件重载插件即可（`memory` 是 host 侧，重载或重启生效；`fixer` 的客户端半重载页面生效）。

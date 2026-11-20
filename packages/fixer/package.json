@@ -1,7 +1,6 @@
 {
   "name": "icex-dsh-fixer",
   "version": "0.2.1",
-  "private": true,
   "description": "Adjust the conversation width, navigate user inputs from a left anchor rail, and summon the window with a right-Option double tap.",
   "type": "module",
   "exports": {
@@ -32,5 +31,20 @@
         "@deepseek-ai/dsh-client-ui-chat"
       ]
     }
-  }
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icexxxxxx/dsh-plugins.git",
+    "directory": "packages/fixer"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh"
+  ]
 }

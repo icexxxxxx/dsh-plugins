@@ -19,7 +19,7 @@
  * `memory` tool; when it does not, the policy falls back to editing the file
  * with the built-in filesystem tools.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -35,6 +35,9 @@ export const HOME = process.env.DSH_HOME && process.env.DSH_HOME !== ''
 
 const KINDS = ['pref', 'project', 'pitfall', 'decision', 'tool']
 const GLOBAL_FILE = join(HOME, 'MEMORY.md')
+const STATE_FILE = join(HOME, '.state.json')
+const LOCK_FILE = join(HOME, '.consolidate.lock')
+const CONSOLIDATE = { intervalDays: 7, maxEntries: 60, dedupe: 0.85 }
 const ENTRY_RE = /^- \[([a-z]+)\] (.+?)(?: <!-- id=([0-9a-z]+) src=(\S+) at=([0-9-]+) -->)?$/u
 const MAX_TEXT = 200
 const BUDGET = { global: 1000, project: 1200 }
@@ -127,6 +130,130 @@ export function forgetEntry(file, id) {
   lines.splice(index, 1)
   writeAtomic(file, lines.join('\n'))
   return true
+}
+
+/** Sidecar state: when consolidation last ran and what it did. */
+export function readState() {
+  try {
+    const raw = readFileSync(STATE_FILE, 'utf8')
+    const parsed = JSON.parse(raw)
+    return parsed !== null && typeof parsed === 'object' ? parsed : {}
+  } catch (error) {
+    return {}
+  }
+}
+
+/** Persist sidecar state atomically; a failure here must not break a session. */
+function writeState(state) {
+  try {
+    writeAtomic(STATE_FILE, JSON.stringify(state, null, 2) + '\n')
+  } catch (error) {
+    // State is a cache of the last run, not a source of truth.
+  }
+}
+
+/** Archive path paired with a store file: MEMORY.md -> MEMORY.archive.md. */
+export function archivePath(file) {
+  return file.replace(/\.md$/u, '.archive.md')
+}
+
+/** Append removed entries to the archive instead of deleting them. */
+function appendArchive(file, entries) {
+  if (entries.length === 0) return
+  const target = archivePath(file)
+  mkdirSync(dirname(target), { recursive: true })
+  const existing = existsSync(target) ? readFileSync(target, 'utf8') : '# Archived memory: merged duplicates and entries beyond the cap\n'
+  writeAtomic(target, existing.replace(/\n*$/u, '\n') + entries.map(formatEntry).join('\n') + '\n')
+}
+
+/** Keep only the given entry ids; user prose and unknown lines survive. */
+export function rewriteEntries(file, keepIds) {
+  const { lines } = readStore(file)
+  const kept = lines.filter((line) => {
+    const match = ENTRY_RE.exec(line.trim())
+    if (match === null) return true
+    if (match[3] === undefined) return true
+    return keepIds.has(match[3])
+  })
+  writeAtomic(file, kept.join('\n'))
+}
+
+/**
+ * Deterministic consolidation: merge near-duplicates (keeping the newer entry)
+ * and move entries beyond the cap to the archive. No model call, nothing deleted.
+ */
+export function consolidateFile(file, options) {
+  const opts = { ...CONSOLIDATE, ...options }
+  const { entries } = readStore(file)
+  if (entries.length === 0) return { file, before: 0, kept: 0, merged: 0, archived: 0 }
+  const kept = []
+  const removed = []
+  for (const entry of entries) {
+    const index = kept.findIndex((candidate) => similarity(candidate.text, entry.text) >= opts.dedupe)
+    if (index < 0) {
+      kept.push(entry)
+      continue
+    }
+    const twin = kept[index]
+    if ((entry.at || '') > (twin.at || '')) {
+      removed.push(twin)
+      kept[index] = entry
+    } else {
+      removed.push(entry)
+    }
+  }
+  const overflow = kept.length > opts.maxEntries ? kept.slice(0, kept.length - opts.maxEntries) : []
+  const final = kept.slice(overflow.length)
+  if (removed.length > 0 || overflow.length > 0) {
+    rewriteEntries(file, new Set(final.map((entry) => entry.id)))
+    appendArchive(file, removed.concat(overflow))
+  }
+  return { file, before: entries.length, kept: final.length, merged: removed.length, archived: overflow.length }
+}
+
+/** Skip if another session is consolidating right now. */
+function acquireLock() {
+  try {
+    const info = existsSync(LOCK_FILE) ? statSync(LOCK_FILE) : null
+    if (info !== null && Date.now() - info.mtimeMs < 10 * 60 * 1000) return false
+    if (info !== null) rmSync(LOCK_FILE, { force: true })
+    writeFileSync(LOCK_FILE, String(process.pid), { flag: 'wx' })
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
+function releaseLock() {
+  try {
+    rmSync(LOCK_FILE, { force: true })
+  } catch (error) {
+    // A stale lock expires on its own.
+  }
+}
+
+/** Run consolidation when the interval elapsed; returns the report or null. */
+export function maybeConsolidate(cwd, options) {
+  const opts = { ...CONSOLIDATE, ...options }
+  const state = readState()
+  const last = Date.parse(typeof state.lastConsolidatedAt === 'string' ? state.lastConsolidatedAt : '')
+  if (Number.isFinite(last) && Date.now() - last < opts.intervalDays * 24 * 60 * 60 * 1000) return null
+  if (!acquireLock()) return null
+  try {
+    const files = [GLOBAL_FILE]
+    const project = projectFile(cwd)
+    if (project !== null) files.push(project)
+    const report = files.filter((file) => existsSync(file)).map((file) => consolidateFile(file, opts))
+    if (report.length === 0) return null
+    writeState({
+      ...state,
+      lastConsolidatedAt: new Date().toISOString(),
+      lastReport: report,
+    })
+    return report
+  } finally {
+    releaseLock()
+  }
 }
 
 /** Token set used by the duplicate screen and the local search ranking. */
@@ -275,8 +402,24 @@ async function loadTools() {
 /** Harness tool API resolved once at load: the app copy when the plugin has none. */
 const TOOLS = await loadTools()
 
+/** Merge row config over the built-in consolidation defaults. */
+function tuningOf(config) {
+  const source = config !== null && typeof config === 'object' ? config : {}
+  const pick = (value, fallback, min, max) => {
+    const number = typeof value === 'number' ? value : Number(value)
+    if (!Number.isFinite(number)) return fallback
+    return Math.min(max, Math.max(min, number))
+  }
+  return {
+    intervalDays: pick(source.consolidateIntervalDays, CONSOLIDATE.intervalDays, 1, 365),
+    maxEntries: pick(source.maxEntries, CONSOLIDATE.maxEntries, 5, 1000),
+    dedupe: pick(source.dedupeSimilarity, CONSOLIDATE.dedupe, 0.5, 0.99),
+  }
+}
+
 /** Apply the plugin: one prompt section, one injection, optionally one tool. */
-export function apply(ctx) {
+export function apply(ctx, config) {
+  const tuning = tuningOf(config)
   const globalFile = GLOBAL_FILE
 
   ctx.systemPrompt.section({
@@ -291,6 +434,16 @@ export function apply(ctx) {
     void (async () => {
       try {
         const cwd = await workingDirectory(ctx, agent)
+        try {
+          const report = maybeConsolidate(cwd, tuning)
+          if (report !== null) {
+            const merged = report.reduce((total, item) => total + item.merged, 0)
+            const archived = report.reduce((total, item) => total + item.archived, 0)
+            ctx.logger?.info?.('icex-dsh-memory: consolidated, merged ' + merged + ', archived ' + archived)
+          }
+        } catch (error) {
+          ctx.logger?.warn?.('icex-dsh-memory: consolidation failed: ' + String(error))
+        }
         const text = renderDigest(cwd)
         if (text === '') return
         agent.inject({ content: [{ type: 'text', text }], source: { kind: 'icex-memory' } })
@@ -349,8 +502,8 @@ function registerTool(ctx, defineTool) {
       action: {
         type: 'string',
         required: true,
-        enum: ['add', 'replace', 'forget', 'search', 'list'],
-        description: 'add, replace, forget, search, or list entries.',
+        enum: ['add', 'replace', 'forget', 'search', 'list', 'consolidate'],
+        description: 'add, replace, forget, search, list, or consolidate (merge duplicates and archive overflow).',
       },
       scope: {
         type: 'string',
@@ -383,6 +536,16 @@ function registerTool(ctx, defineTool) {
       if (file === null) return { ok: false, action: args.action, entries: [] }
       const { entries } = readStore(file)
 
+      if (args.action === 'consolidate') {
+        const files = [GLOBAL_FILE]
+        const project = projectFile(cwd)
+        if (project !== null) files.push(project)
+        const report = files.filter((item) => existsSync(item)).map((item) => consolidateFile(item, tuning))
+        writeState({ ...readState(), lastConsolidatedAt: new Date().toISOString(), lastReport: report, manual: true })
+        const merged = report.reduce((total, item) => total + item.merged, 0)
+        const archived = report.reduce((total, item) => total + item.archived, 0)
+        return { ok: true, action: 'consolidate', reason: 'merged ' + merged + ', archived ' + archived, entries: [] }
+      }
       if (args.action === 'list') {
         return { ok: true, action: 'list', entries: searchEntries(entries, '', 20).map((entry) => view(entry, scope)) }
       }
