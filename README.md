@@ -9,7 +9,16 @@
 
 ## 安装
 
-DSH 从本地目录安装 bundle：在 **Plugins** 里选本地目录，或把它加进 profile 的依赖与 bundles。
+两个包都已发布到 npm，一条命令即可：
+
+```sh
+dsh plugin --profile desktop add icex-dsh-memory
+dsh plugin --profile desktop add icex-dsh-fixer
+```
+
+也可以只加插件索引（见下），在 **Plugins → Discover** 里搜 `icex` 安装。
+
+本地开发时才用源码目录：把依赖写成 `link:/path/to/dsh-plugins/packages/memory` 再装。
 
 ```sh
 git clone https://github.com/icexxxxxx/dsh-plugins.git
