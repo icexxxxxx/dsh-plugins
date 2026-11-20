@@ -11,10 +11,16 @@
   "metadata": {
     "categories": {
       "memory": {
-        "title": { "en": "Memory", "zh": "记忆" }
+        "title": {
+          "en": "Memory",
+          "zh": "记忆"
+        }
       },
       "ui": {
-        "title": { "en": "Interface", "zh": "界面" }
+        "title": {
+          "en": "Interface",
+          "zh": "界面"
+        }
       }
     },
     "labels": {},
@@ -23,7 +29,10 @@
   "plugins": [
     {
       "name": "icex-dsh-memory",
-      "title": { "en": "Icex DSH Memory", "zh": "Icex DSH Memory" },
+      "title": {
+        "en": "Icex DSH Memory",
+        "zh": "Icex DSH Memory"
+      },
       "description": {
         "en": "Cross-session memory: a budgeted digest injected at session start, plus a memory tool backed by a Markdown store with provenance.",
         "zh": "跨会话记忆：会话开始注入有预算的摘要，并用一个 memory 工具写入带来源的 Markdown 存储。"
@@ -37,19 +46,20 @@
       },
       "metadata": {
         "category": "memory",
-        "keywords": ["memory", "cross-session", "context"],
+        "keywords": [
+          "memory",
+          "cross-session",
+          "context"
+        ],
         "labels": [],
         "sortKeys": {}
       },
       "versions": [
         {
           "version": "0.2.0",
-          "publishTimestamp": 1795163462,
+          "publishTimestamp": 1795165040,
           "source": {
-            "type": "git",
-            "url": "https://github.com/icexxxxxx/dsh-plugins",
-            "commit": "7fec08d6571e30e6b9636f45fca8f66578fabc85",
-            "path": "packages/memory"
+            "type": "npm"
           },
           "engines": {}
         }
@@ -57,7 +67,10 @@
     },
     {
       "name": "icex-dsh-fixer",
-      "title": { "en": "Icex DSH Fixer", "zh": "Icex DSH Fixer" },
+      "title": {
+        "en": "Icex DSH Fixer",
+        "zh": "Icex DSH Fixer"
+      },
       "description": {
         "en": "Left-side input anchor rail, and double-tap right Option to summon the window on the screen under the pointer.",
         "zh": "左侧输入锚点导航，双击右 Option 把窗口摆到指针所在屏幕并置顶。"
@@ -71,19 +84,20 @@
       },
       "metadata": {
         "category": "ui",
-        "keywords": ["rail", "navigation", "window"],
+        "keywords": [
+          "rail",
+          "navigation",
+          "window"
+        ],
         "labels": [],
         "sortKeys": {}
       },
       "versions": [
         {
           "version": "0.2.1",
-          "publishTimestamp": 1795163462,
+          "publishTimestamp": 1795165040,
           "source": {
-            "type": "git",
-            "url": "https://github.com/icexxxxxx/dsh-plugins",
-            "commit": "7fec08d6571e30e6b9636f45fca8f66578fabc85",
-            "path": "packages/fixer"
+            "type": "npm"
           },
           "engines": {}
         }
