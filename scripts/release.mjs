@@ -35,11 +35,9 @@ const fail = (message) => {
   process.exit(1)
 }
 
-const git = (args, options = {}) => execFileSync('git', args, {
-  cwd: root,
-  encoding: 'utf8',
-  stdio: options.quiet === true ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-}).trim()
+const git = (args) => {
+  execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: 'inherit' })
+}
 
 const gitCapture = (args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
 
