@@ -5,11 +5,13 @@
   "description": "Cross-session memory for DeepSeek Harness: a budgeted MEMORY.md digest injected once per session, plus one memory tool with provenance back to the producing session.",
   "exports": {
     ".": "./index.js",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
+    "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "docs",
@@ -19,6 +21,10 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
     }
   },
   "license": "MIT",

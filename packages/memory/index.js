@@ -417,10 +417,67 @@ function tuningOf(config) {
   }
 }
 
+/** Largest memory file the settings editor accepts. */
+const MAX_EDIT_BYTES = 256 * 1024
+
+/** JSON response helper for the settings editor route. */
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  })
+}
+
+/** Resolve the store file named by the editor's query string. */
+function editorTarget(params) {
+  if (params.get('scope') !== 'project') return { scope: 'global', file: GLOBAL_FILE }
+  const dir = params.get('dir') ?? ''
+  if (!dir.startsWith('/')) return { scope: 'project', error: 'project scope needs an absolute directory' }
+  if (!existsSync(dir)) return { scope: 'project', error: 'directory does not exist' }
+  return { scope: 'project', file: projectFile(dir) }
+}
+
+/** GET reads a store, POST replaces it; both are owner-only by the route registry. */
+async function handleEditorRequest(request) {
+  const target = editorTarget(new URL(request.url).searchParams)
+  if (target.error !== undefined) return jsonResponse({ ok: false, error: target.error }, 400)
+
+  if (request.method === 'GET') {
+    const text = existsSync(target.file) ? readFileSync(target.file, 'utf8') : ''
+    return jsonResponse({ ok: true, scope: target.scope, path: target.file, text, entries: parseEntries(text).length })
+  }
+
+  let body
+  try {
+    body = await request.json()
+  } catch (error) {
+    return jsonResponse({ ok: false, error: 'body is not JSON' }, 400)
+  }
+  const text = typeof body?.text === 'string' ? body.text : ''
+  if (text.length > MAX_EDIT_BYTES) return jsonResponse({ ok: false, error: 'content exceeds 256 KiB' }, 413)
+  if (looksSecret(text)) return jsonResponse({ ok: false, error: 'refusing to save: content looks like a credential' }, 400)
+  writeAtomic(target.file, text)
+  return jsonResponse({ ok: true, scope: target.scope, path: target.file, entries: parseEntries(text).length })
+}
+
+/** Claim the settings-editor route when this host carries a browser connection. */
+function registerEditorRoute(ctx) {
+  const connection = ctx.get('connection')
+  if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
+  ctx.effect(() => connection.fetch.register({
+    path: '/api/icex-memory',
+    methods: ['GET', 'POST'],
+    requestBody: 'buffered',
+    fetch: handleEditorRequest,
+  }), 'icex-dsh-memory: settings editor route')
+}
+
 /** Apply the plugin: one prompt section, one injection, optionally one tool. */
 export function apply(ctx, config) {
   const tuning = tuningOf(config)
   const globalFile = GLOBAL_FILE
+
+  registerEditorRoute(ctx)
 
   ctx.systemPrompt.section({
     name: 'tool:memory',

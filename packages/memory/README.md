@@ -3,6 +3,7 @@
 Cross-session memory for DeepSeek Harness, in one host plugin.
 
 - **Injected once per session** — a budgeted digest of durable facts enters the context as an inbox message (`agent.inject`), so the system-prompt prefix stays stable and the model can see exactly which memories it received in the session log.
+- **Settings-page editor** — the plugin's page in Plugins shows the current store and lets you edit it, global or per working directory.
 - **One tool, five actions** — `memory` with `add`, `replace`, `forget`, `search`, `list`.
 - **Plain Markdown store** you can read, edit and version: `~/.dsh/memory/MEMORY.md` (global) and `<cwd>/.dsh/memory/MEMORY.md` (per working directory).
 - **Provenance** — every entry carries `src=<session>@<seq>` and a date; memory is an index into the session log, never a replacement for it.

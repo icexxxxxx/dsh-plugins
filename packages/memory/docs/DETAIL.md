@@ -69,6 +69,17 @@
 | `dedupeSimilarity` | `0.85` | 判定重复的相似度阈值（0.5–0.99） |
 
 
+## 设置页编辑
+
+插件在 **Plugins → Icex DSH Memory** 的配置区里提供一个「记忆」板块：
+
+- 作用域切换：**全局**（`~/.dsh/memory/MEMORY.md`）或**项目**（填一个工作目录，编辑 `<dir>/.dsh/memory/MEMORY.md`）
+- 直接编辑整个文件，保存后原子写入，下个会话开始时生效
+- 显示条数、文件路径、未保存状态；保存时同样拦截疑似凭证，单文件上限 256 KiB
+
+接口是 `GET/POST /api/icex-memory?scope=global|project&dir=<abs>`，只对已认证的本机浏览器 Peer 开放。
+
+
 ## 安装
 
 ```sh
