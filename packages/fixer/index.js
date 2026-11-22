@@ -153,14 +153,8 @@ const BARE_STATE_FILE = join(DSH_HOME, 'fixer', 'bare-mode.json')
 const BARE_PROFILE = process.env.DSH_PROFILE ?? ''
 let bareOperationRunning = false
 
-/** Read the snapshot for this profile, or null when there is none or it is unreadable. */
-function readBareState() {
-  let raw
-  try {
-    raw = readFileSync(BARE_STATE_FILE, 'utf8')
-  } catch (error) {
-    return null
-  }
+/** One snapshot candidate as read from disk, or null when the file is unusable. */
+function parseBareState(raw) {
   let parsed
   try {
     parsed = JSON.parse(raw)
@@ -178,20 +172,45 @@ function readBareState() {
   }
 }
 
-/** Write the snapshot atomically: the file appears only when it is complete. */
+/** Read the snapshot for this profile, falling back to the copy written beside it. */
+function readBareState() {
+  for (const file of [BARE_STATE_FILE, BARE_STATE_FILE + '.bak']) {
+    let raw
+    try {
+      raw = readFileSync(file, 'utf8')
+    } catch (error) {
+      continue
+    }
+    const state = parseBareState(raw)
+    if (state !== null) return state
+  }
+  return null
+}
+
+/**
+ * Write the snapshot atomically: the previous file becomes the backup, and the
+ * new one appears only when it is complete.
+ */
 function writeBareState(state) {
   mkdirSync(dirname(BARE_STATE_FILE), { recursive: true })
   const temp = BARE_STATE_FILE + '.' + String(process.pid) + '.tmp'
   writeFileSync(temp, JSON.stringify(state, null, 2) + '\n')
+  try {
+    renameSync(BARE_STATE_FILE, BARE_STATE_FILE + '.bak')
+  } catch (error) {
+    // The first write has no predecessor to keep.
+  }
   renameSync(temp, BARE_STATE_FILE)
 }
 
-/** Forget the snapshot; a missing file is already the desired state. */
+/** Forget the snapshot and its backup; a missing file is already the desired state. */
 function clearBareState() {
-  try {
-    unlinkSync(BARE_STATE_FILE)
-  } catch (error) {
-    // Nothing to clear.
+  for (const file of [BARE_STATE_FILE, BARE_STATE_FILE + '.bak']) {
+    try {
+      unlinkSync(file)
+    } catch (error) {
+      // Nothing to clear.
+    }
   }
 }
 
@@ -203,13 +222,18 @@ function bareManager(scope) {
   return manager
 }
 
+/** Whether one listed bundle is a layer bare mode turns off. */
+function isBareTarget(bundle) {
+  return bundle.enabled === true
+    && bundle.availability !== 'missing'
+    && bundle.readOnlyReason === undefined
+    && !BARE_PROTECTED.has(bundle.name)
+}
+
 /** The enabled bundle layers bare mode turns off, in profile order. */
 async function bareTargets(manager) {
   const bundles = await manager.listBundles()
-  return bundles.filter((bundle) => bundle.enabled === true
-    && bundle.availability !== 'missing'
-    && bundle.readOnlyReason === undefined
-    && !BARE_PROTECTED.has(bundle.name))
+  return bundles.filter(isBareTarget)
 }
 
 /**
@@ -247,9 +271,10 @@ async function setBundles(manager, names, enabled) {
 
 /** Build the status reply from the snapshot and what the profile actually runs now. */
 async function bareStatus(manager) {
-  const state = readBareState()
-  if (state === null) return { ok: true, active: false, snapshot: null, disabled: [] }
   const bundles = await manager.listBundles()
+  const candidates = bundles.filter(isBareTarget).length
+  const state = readBareState()
+  if (state === null) return { ok: true, active: false, snapshot: null, disabled: [], candidates }
   const remaining = state.bundles.filter((name) => {
     const bundle = bundles.find((candidate) => candidate.name === name)
     return bundle !== undefined && bundle.enabled === false
@@ -258,13 +283,14 @@ async function bareStatus(manager) {
     // The profile was restored elsewhere (the Plugins list, another browser,
     // a hand edit); the snapshot no longer describes it.
     clearBareState()
-    return { ok: true, active: false, snapshot: null, disabled: [] }
+    return { ok: true, active: false, snapshot: null, disabled: [], candidates }
   }
   return {
     ok: true,
     active: true,
     snapshot: { at: state.at, count: state.bundles.length, bundles: state.bundles },
     disabled: remaining,
+    candidates,
   }
 }
 
@@ -288,6 +314,9 @@ async function enterBareMode(manager) {
   // Later layers go first: dependents release the services they held before
   // a lower layer they depend on is unloaded.
   const outcome = await setBundles(manager, state.bundles.slice().reverse(), false)
+  if (outcome.failed.length > 0) {
+    console.warn('[icex-dsh-fixer] bare mode kept these layers on: ' + outcome.failed.map((item) => item.name + '(' + item.code + ')').join(', '))
+  }
   const after = await bareStatus(manager)
   return {
     ok: true,

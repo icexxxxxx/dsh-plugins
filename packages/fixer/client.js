@@ -337,11 +337,24 @@ window.__ModuleLoader__.load({
 
     /** One JSON reply from the bare-mode route, with the Host's refusals as errors. */
     function bareReply(response) {
-      return response.json().then(function (body) {
-        if (body === null || typeof body !== 'object') throw new Error('empty reply')
-        if (body.ok !== true) throw new Error(typeof body.error === 'string' ? body.error : 'request failed')
-        return body
+      return response.json().catch(function () {
+        return null
+      }).then(function (body) {
+        if (body !== null && typeof body === 'object' && body.ok === true) return body
+        if (body !== null && typeof body === 'object' && typeof body.error === 'string') throw new Error(body.error)
+        if (response.status === 401) throw new Error('unauthorized')
+        throw new Error('HTTP ' + String(response.status))
       })
+    }
+
+    /** Turn a Host refusal or a transport failure into one actionable line. */
+    function bareErrorMessage(error, t) {
+      const message = String(error?.message ?? error)
+      if (message === 'plugin manager is unavailable') return t('bare.noManager')
+      if (message === 'another change is in progress') return t('bare.busyError')
+      if (message === 'unauthorized') return t('bare.unauthorized')
+      if (error instanceof TypeError) return t('bare.offline')
+      return t('bare.failed', { message: message })
     }
 
     function bareStatusRequest() {
@@ -362,9 +375,9 @@ window.__ModuleLoader__.load({
 
     /** Apply a Host reply to the mirror so the rest of the page hides or returns. */
     function syncBareFromReply(body) {
-      const count = Array.isArray(body.snapshot?.bundles)
-        ? body.snapshot.bundles.length
-        : Array.isArray(body.disabled) ? body.disabled.length : 0
+      const count = Array.isArray(body.disabled)
+        ? body.disabled.length
+        : Array.isArray(body.snapshot?.bundles) ? body.snapshot.bundles.length : 0
       bareStore.update({ active: body.active === true, count: body.active === true ? count : 0 })
       return body
     }
@@ -378,18 +391,23 @@ window.__ModuleLoader__.load({
       const bare = useBare()
       const busyState = useState(false)
       const noteState = useState(null)
+      const candidatesState = useState(null)
       const busy = busyState[0]
       const setBusy = busyState[1]
       const note = noteState[0]
       const setNote = noteState[1]
+      const candidates = candidatesState[0]
+      const setCandidates = candidatesState[1]
 
       useEffect(function () {
         let live = true
         bareStatusRequest().then(function (body) {
-          if (live) syncBareFromReply(body)
+          if (!live) return
+          syncBareFromReply(body)
+          if (Number.isInteger(body.candidates)) setCandidates(body.candidates)
         }).catch(function () {
-          // No route means this Host half predates the feature; the switch
-          // then reports the failure itself.
+          // A missing route means this Host half predates the feature; the
+          // switch then reports the failure itself.
         })
         return function () {
           live = false
@@ -399,46 +417,68 @@ window.__ModuleLoader__.load({
       function toggle() {
         if (busy) return
         const next = bare.active !== true
-        if (next && typeof window !== 'undefined' && window.confirm(t('bare.confirm')) !== true) return
+        if (next) {
+          const question = Number.isInteger(candidates)
+            ? t('bare.confirmCount', { count: candidates })
+            : t('bare.confirm')
+          if (typeof window !== 'undefined' && window.confirm(question) !== true) return
+        }
         setBusy(true)
         setNote(null)
         bareSwitchRequest(next ? 'on' : 'off').then(function (body) {
           const result = syncBareFromReply(body)
+          if (Number.isInteger(result.candidates)) setCandidates(result.candidates)
           const failed = Array.isArray(result.failed) ? result.failed : []
           if (failed.length > 0) {
             setBusy(false)
-            setNote(t('bare.partial', { names: failed.map(function (item) { return item.name }).join(', ') }))
+            setNote(t(next ? 'bare.partial' : 'bare.partialOff', { names: failed.map(function (item) { return item.name }).join(', ') }))
             return
+          }
+          if (next === true && result.active !== true) {
+            setBusy(false)
+            setNote(t('bare.empty'))
+            return
+          }
+          const restart = Array.isArray(result.restartRequired) ? result.restartRequired : []
+          if (restart.length > 0 && typeof window !== 'undefined') {
+            window.alert(t('bare.restart', { names: restart.join(', ') }))
           }
           if (typeof window !== 'undefined') window.location.reload()
         }).catch(function (error) {
           setBusy(false)
-          setNote(t('bare.failed', { message: String(error?.message ?? error) }))
+          setNote(bareErrorMessage(error, t))
         })
       }
 
-      return h(SettingRow, {
-        title: t('bare.title'),
-        description: t('bare.desc'),
-        switchRow: true,
-      },
-        h('div', { className: 'icex-fixer-bareControl' },
-          h(Toggle, {
-            checked: bare.active,
-            label: t('bare.title'),
-            disabled: busy,
-            onChange: toggle,
-          }),
-          h('div', { className: 'icex-fixer-value' },
-            busy
-              ? t('bare.busy')
-              : bare.active ? t('bare.on', { count: bare.count }) : t('bare.off')),
-          note === null ? null : h('div', { className: 'icex-fixer-hint icex-fixer-error' }, note)))
+      return h(Fragment, null,
+        h(SettingRow, {
+          title: t('bare.title'),
+          description: t('bare.desc'),
+          switchRow: true,
+        },
+          h('div', { className: 'icex-fixer-bareControl' },
+            h(Toggle, {
+              checked: bare.active,
+              label: t('bare.title'),
+              disabled: busy,
+              onChange: toggle,
+            }),
+            h('div', { className: 'icex-fixer-value' },
+              busy
+                ? t('bare.busy')
+                : bare.active ? t('bare.on', { count: bare.count }) : t('bare.off')))),
+        bare.active === true
+          ? h('div', { className: 'icex-fixer-hint icex-fixer-bareHint' }, t('bare.keepAlive'))
+          : null,
+        note === null
+          ? null
+          : h('div', { className: 'icex-fixer-errorBlock', role: 'alert' }, note))
     }
 
     function SettingsPage(props) {
       const t = translator(props.t)
       const settings = useSettings()
+      const bare = useBare()
       if (props.view === 'summary') return null
 
       return h('section', { className: 'icex-fixer-settings', 'aria-label': t('settings.title') },
@@ -452,6 +492,7 @@ window.__ModuleLoader__.load({
             h(Toggle, {
               checked: settings.anchorsEnabled,
               label: t('settings.anchors.enable'),
+              disabled: bare.active,
               onChange: function (checked) {
                 settingsStore.update({ anchorsEnabled: checked })
               },
@@ -471,6 +512,7 @@ window.__ModuleLoader__.load({
                 step: 100,
                 value: settings.tooltipDelayMs,
                 'aria-label': t('settings.anchors.delay'),
+                disabled: bare.active,
                 onChange: function (event) {
                   settingsStore.update({ tooltipDelayMs: Number(event.target.value) })
                 },
@@ -486,6 +528,7 @@ window.__ModuleLoader__.load({
             h(Toggle, {
               checked: settings.hideNativeRail,
               label: t('settings.anchors.native'),
+              disabled: bare.active,
               onChange: function (checked) {
                 settingsStore.update({ hideNativeRail: checked })
               },
@@ -497,6 +540,7 @@ window.__ModuleLoader__.load({
           },
             h('span', { className: 'icex-fixer-value' }, t('settings.summon.status')))),
         h('div', { className: 'icex-fixer-hint' }, t('settings.saved')),
+        bare.active === true ? h('div', { className: 'icex-fixer-hint' }, t('bare.settingsHint')) : null,
         h('div', { className: 'icex-fixer-heading' }, t('bare.section')),
         h('div', { className: 'icex-fixer-card' }, h(BareModeSection, { t: props.t })),
         h('div', { className: 'icex-fixer-hint' }, t('bare.hint')))
@@ -956,11 +1000,21 @@ window.__ModuleLoader__.load({
       'bare.title': 'Turn every plugin off',
       'bare.desc': 'Close every plugin layer and look at DSH as it ships. The plugins stay installed; this same switch turns them all back on. This plugin stays loaded so the switch is reachable, and hides its own changes while bare mode is on.',
       'bare.off': 'Plugins run as configured',
-      'bare.on': 'All plugins are off ({count})',
+      'bare.on': 'Plugins off: {count}',
       'bare.busy': 'Working…',
       'bare.confirm': 'Turn off every plugin? Sessions and settings stay untouched, and this same switch turns them all back on. The page reloads once after the change.',
-      'bare.partial': 'These plugins stayed on: {names}',
+      'bare.confirmCount': 'Turn off {count} plugins? Only the DSH core, the Plugins page, and this plugin stay on. Sessions and settings are untouched, and the same switch brings them all back. The page reloads once.',
+      'bare.partial': 'These plugins stayed on: {names}. The rest are off; reload the page to see it.',
+      'bare.partialOff': 'These plugins did not come back on: {names}. Reload the page to see the rest.',
       'bare.failed': 'Failed: {message}',
+      'bare.restart': 'These plugins take effect after a DSH restart: {names}',
+      'bare.empty': 'There is no plugin to turn off.',
+      'bare.keepAlive': 'Tip: do not turn this plugin off in the list, or this restore switch disappears with it.',
+      'bare.settingsHint': 'While bare mode is on, the rail options above are paused; they return when bare mode is off.',
+      'bare.noManager': 'This profile has no plugin manager, so it cannot switch plugins.',
+      'bare.busyError': 'Another plugin change is in progress. Refresh, then try again.',
+      'bare.unauthorized': 'The session expired. Refresh the page, then try again.',
+      'bare.offline': 'Cannot reach the Host. Refresh the page, then try again.',
       'bare.hint': 'The state lives in this profile on the Host, so it survives a reload or restart.',
       'rail.label': 'Input anchors',
       'rail.jump': 'Jump to input {index}: {prompt}',
@@ -993,11 +1047,21 @@ window.__ModuleLoader__.load({
       'bare.title': '关闭全部插件',
       'bare.desc': '关掉所有插件层，只看 DSH 原貌。插件不会被卸载，拨回来就全部恢复；本插件保持加载以便随时恢复，开启时会隐藏自己的界面改动。',
       'bare.off': '插件按当前设置运行',
-      'bare.on': '已关闭全部插件（{count} 个）',
+      'bare.on': '已关闭 {count} 个插件',
       'bare.busy': '处理中…',
       'bare.confirm': '关闭全部插件？会话和设置不受影响，用同一个开关就能全部恢复。切换后页面会刷新一次。',
-      'bare.partial': '这些插件没能关闭：{names}',
+      'bare.confirmCount': '关闭 {count} 个插件？只保留 DSH 内核、插件页和本插件。会话和设置不受影响，同一个开关就能全部恢复。切换后页面会刷新一次。',
+      'bare.partial': '这些插件没能关闭：{names}。其余插件已关闭，刷新页面后生效。',
+      'bare.partialOff': '这些插件没能恢复：{names}。刷新页面后生效。',
       'bare.failed': '失败：{message}',
+      'bare.restart': '这些插件要重启 DSH 后才生效：{names}',
+      'bare.empty': '没有可关闭的插件。',
+      'bare.keepAlive': '提示：别在插件列表里停用本插件，否则这个恢复入口会一起消失。',
+      'bare.settingsHint': '纯净模式开启时，上面的锚点设置暂时不生效；关掉纯净模式后恢复。',
+      'bare.noManager': '这个 profile 没有插件管理器，无法切换插件。',
+      'bare.busyError': '另一处正在切换插件，刷新后再试。',
+      'bare.unauthorized': '登录状态过期，刷新页面后再试。',
+      'bare.offline': '连不上 Host，刷新页面后再试。',
       'bare.hint': '状态保存在这个 profile 的 Host 上，刷新或重启后仍然有效。',
       'rail.label': '输入锚点',
       'rail.jump': '跳转到第 {index} 条输入：{prompt}',
@@ -1036,7 +1100,10 @@ window.__ModuleLoader__.load({
       '.icex-fixer-scale { display: flex; justify-content: space-between; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); font-variant-numeric: tabular-nums; }',
       '.icex-fixer-hint { margin-top: 2px; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); }',
       '.icex-fixer-bareControl { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; text-align: right; max-width: 260px; }',
-      '.icex-fixer-error { color: var(--dsw-alias-state-error-primary, #d5484b); }',
+      '.icex-fixer-switch:disabled { opacity: 0.45; cursor: not-allowed; }',
+      '.icex-fixer-range:disabled { opacity: 0.45; }',
+      '.icex-fixer-bareHint { margin: -8px 0 12px; }',
+      '.icex-fixer-errorBlock { margin: -8px 0 12px; padding: 8px 10px; border: 1px solid var(--dsw-alias-state-error-primary, #d5484b); border-radius: var(--dsw-radius-md); font-size: 12px; line-height: 18px; color: var(--dsw-alias-state-error-primary, #d5484b); overflow-wrap: anywhere; }',
       '.icex-rail { position: fixed; z-index: 40; width: 18px; transform: translateY(-50%); pointer-events: auto; }',
       '.icex-rail-scroller { position: relative; max-height: inherit; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 0; }',
       '.icex-rail-scroller::-webkit-scrollbar { display: none; }',
@@ -1151,6 +1218,32 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       runtimeContext = ctx
       ctx.effect(installStyles, 'icex-dsh-fixer: styles')
+      ctx.effect(function () {
+        let live = true
+        bareStatusRequest().then(function (body) {
+          if (live) syncBareFromReply(body)
+        }).catch(function () {
+          // Keep the browser mirror when the Host half cannot answer.
+        })
+        return function () {
+          live = false
+        }
+      }, 'icex-dsh-fixer: bare mode state')
+      ctx.effect(function () {
+        if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return function () {}
+        function onStorage(event) {
+          if (event === null || typeof event !== 'object' || event.key !== BARE_KEY || typeof event.newValue !== 'string') return
+          try {
+            bareStore.update(JSON.parse(event.newValue))
+          } catch (error) {
+            // Another document wrote an unreadable value; keep the local one.
+          }
+        }
+        window.addEventListener('storage', onStorage)
+        return function () {
+          window.removeEventListener('storage', onStorage)
+        }
+      }, 'icex-dsh-fixer: bare mode storage sync')
       ctx.effect(function () {
         return ctx.locale.register(NS, { en: en, zh: zh })
       }, 'icex-dsh-fixer: locale')

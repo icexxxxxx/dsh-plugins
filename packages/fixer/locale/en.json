@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Icex DSH Fixer",
-    "description": "Navigate your inputs from a left dot rail and summon the window with a right-Option double tap.",
+    "description": "Navigate inputs from a left dot rail, summon the window with a right-Option double tap, and switch every plugin off for a bare DSH.",
     "detail": "docs/DETAIL.md"
   }
 }

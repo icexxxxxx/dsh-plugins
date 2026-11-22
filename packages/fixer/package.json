@@ -1,7 +1,7 @@
 {
   "name": "icex-dsh-fixer",
   "version": "0.3.0",
-  "description": "Adjust the conversation width, navigate user inputs from a left anchor rail, and summon the window with a right-Option double tap.",
+  "description": "Adjust the conversation width, navigate user inputs from a left anchor rail, summon the window with a right-Option double tap, and switch every plugin off for a bare DSH.",
   "type": "module",
   "exports": {
     ".": "./index.js",

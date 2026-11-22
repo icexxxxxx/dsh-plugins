@@ -101,6 +101,9 @@ const fakeCtx = {
 }
 
 plugin.apply(fakeCtx)
+// The plugin asks the Host for bare-mode state on load; only the menu's own
+// requests matter below.
+state.fetches.length = 0
 check('menu component registered', typeof menuComponent === 'function')
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20))

@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Icex DSH Fixer",
-    "description": "用左侧圆点导航输入，并双击右 Option 唤起窗口。",
+    "description": "左侧圆点导航输入，双击右 Option 唤起窗口，还能一键关闭全部插件看 DSH 原貌。",
     "detail": "docs/DETAIL.md"
   }
 }

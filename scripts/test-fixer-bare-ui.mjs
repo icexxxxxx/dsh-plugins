@@ -91,9 +91,13 @@ if (test === undefined) {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20))
 const texts = {
-  'bare.on': '已关闭全部插件（{count} 个）',
-  'bare.off': '插件全部运行中',
-  'bare.partial': '这些插件没能关闭：{names}',
+  'bare.on': '已关闭 {count} 个插件',
+  'bare.off': '插件按当前设置运行',
+  'bare.partial': '这些插件没能关闭：{names}。其余插件已关闭，刷新页面后生效。',
+  'bare.restart': '这些插件要重启 DSH 后才生效：{names}',
+  'bare.keepAlive': '提示：别在插件列表里停用本插件，否则这个恢复入口会一起消失。',
+  'bare.settingsHint': '纯净模式开启时，上面的锚点设置暂时不生效；关掉纯净模式后恢复。',
+  'bare.confirmCount': '关闭 {count} 个插件？只保留 DSH 内核、插件页和本插件。',
 }
 const t = (key, values) => {
   const template = texts[key] ?? key
@@ -147,8 +151,10 @@ check('settings page names the section', textsOf(page).includes('bare.section'))
 const sectionNode = findNode(page, (node) => node.type === test.BareModeSection)
 check('settings page mounts the switch', sectionNode !== null)
 const section = sectionNode.type(sectionNode.props)
-check('the switch names bare mode', section.props.title === 'bare.title' && section.props.description === 'bare.desc')
-check('the switch reports the count', textsOf(section).includes('已关闭全部插件（2 个）'), JSON.stringify(textsOf(section)))
+const bareRow = findNode(section, (node) => node.props?.title === 'bare.title')
+check('the switch names bare mode', bareRow !== null && bareRow.props.description === 'bare.desc')
+check('the switch reports the count', textsOf(section).includes('已关闭 2 个插件'), JSON.stringify(textsOf(section)))
+check('bare mode warns before the plugin can be turned off', textsOf(section).includes('提示：别在插件列表里停用本插件，否则这个恢复入口会一起消失。'))
 check('summary view stays empty', test.SettingsPage({ view: 'summary', t }) === null)
 
 function switchOf(element) {
@@ -196,12 +202,44 @@ partialSwitch.props.onChange(!partialSwitch.props.checked)
 await flush()
 check('does not reload after a refusal', state.reloads === 0)
 check('still posts the attempt', state.fetches.length === 1)
-check('names the layer that stayed on', state.setters.includes('这些插件没能关闭：a'), JSON.stringify(state.setters))
+check('names the layer that stayed on', state.setters.some((value) => typeof value === 'string' && value.includes('这些插件没能关闭：a')), JSON.stringify(state.setters))
+
+// 7b. a change that needs a DSH restart is reported, then the page reloads
+state.reply = { ok: true, active: true, disabled: ['a'], restartRequired: ['a'] }
+state.fetches.length = 0
+state.reloads = 0
+state.alerts.length = 0
+test.syncBareFromReply({ ok: true, active: false })
+const restartSwitch = switchOf(test.BareModeSection({ t }))
+restartSwitch.props.onChange(!restartSwitch.props.checked)
+await flush()
+check('warns before a restart-only change', state.alerts.length === 1 && state.alerts[0] === '这些插件要重启 DSH 后才生效：a', JSON.stringify(state.alerts))
+check('still reloads after the warning', state.reloads === 1)
 
 // 8. the session delete item returns once bare mode is off
 test.syncBareFromReply({ ok: true, active: false })
 const back = test.DeleteSessionItem({ value: 'session-1', t })
 check('session delete item returns', back !== null && typeof back.props?.onSelect === 'function')
+
+// 9. loading the plugin asks the Host for the state, so a new tab or a
+// different port does not stay on a stale browser mirror
+state.reply = { ok: true, active: true, disabled: ['a', 'b'], candidates: 4 }
+state.fetches.length = 0
+const fakeCtx = {
+  effect: (fn) => {
+    const dispose = fn()
+    return typeof dispose === 'function' ? dispose : () => {}
+  },
+  locale: { register: () => () => {} },
+  slots: {
+    inject: (_name, callback) => callback(),
+    register: (options, component) => ({ options, component }),
+  },
+}
+globalThis.__fixerPlugin.apply(fakeCtx)
+check('asks for bare-mode state on load', state.fetches.length === 1 && state.fetches[0].url === '/api/icex-fixer/bare-mode', JSON.stringify(state.fetches))
+await flush()
+check('adopts the Host state on load', test.bareStore.get().active === true && test.bareStore.get().count === 2)
 
 console.log(failures.length === 0 ? 'FIXER BARE UI OK' : failures.length + ' FAILED')
 process.exit(failures.length === 0 ? 0 : 1)

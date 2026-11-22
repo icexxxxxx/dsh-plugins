@@ -4,7 +4,7 @@
  * restore calls, the retry pass, missing packages, and the route contract.
  * No DSH runtime needed.
  */
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -97,6 +97,15 @@ const status = await t.bareStatus(manager)
 check('status is active with the remaining layers', status.active === true && status.disabled.length === 3, JSON.stringify(status))
 check('status exposes the snapshot count', status.snapshot.count === 3, status.snapshot.count)
 
+// 3b. a corrupt snapshot falls back to the copy written beside it
+t.writeBareState({ version: 1, profile: 'test', at: 'first', bundles: ['third-a'] })
+t.writeBareState({ version: 1, profile: 'test', at: 'second', bundles: ['third-b'] })
+writeFileSync(statePath, '{not json')
+const fallback = t.readBareState()
+check('reads the backup when the snapshot is corrupt', fallback !== null && fallback.at === 'first', JSON.stringify(fallback))
+t.clearBareState()
+check('clearing removes the backup too', existsSync(statePath + '.bak') === false)
+
 // 4. a stale snapshot clears itself once nothing is off
 const manual = makeManager()
 await t.enterBareMode(manual)
@@ -149,7 +158,9 @@ check('restores the rest around the missing package', shrunk.entries.get('third-
 manager = makeManager()
 const scope = { pluginManager: manager }
 const readStatus = await t.handleBareMode(new Request('http://127.0.0.1/api/icex-fixer/bare-mode'), scope)
-check('GET without a snapshot is inactive', (await readStatus.json()).active === false)
+const statusBody = await readStatus.json()
+check('GET without a snapshot is inactive', statusBody.active === false)
+check('GET reports how many layers the switch would close', statusBody.candidates === 3, statusBody.candidates)
 const turnOn = await t.handleBareMode(new Request('http://127.0.0.1/api/icex-fixer/bare-mode', {
   method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'on' }),
 }), scope)
