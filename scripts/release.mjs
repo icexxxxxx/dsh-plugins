@@ -91,6 +91,7 @@ async function main() {
 
   log('running self-test')
   execFileSync(process.execPath, [join(root, 'scripts/selftest.mjs')], { cwd: root, stdio: 'inherit' })
+  execFileSync(process.execPath, [join(root, 'scripts/test-fixer-menu.mjs')], { cwd: root, stdio: 'inherit' })
 
   const versions = Object.fromEntries(PACKAGES.map((pkg) => [pkg.name, readJson(pkg.dir + '/package.json').version]))
   const current = Object.values(versions).sort(compareSemver).at(-1)

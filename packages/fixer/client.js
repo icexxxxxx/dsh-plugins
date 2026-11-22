@@ -879,6 +879,27 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Drop the row from the sidebar without reloading the page: the workspace
+     * service owns the session list store and updates it when a session is
+     * archived. Falls back to a reload only when that service is unavailable.
+     */
+    function hideRow(sessionId) {
+      let workspace
+      try {
+        workspace = runtimeContext?.uiWorkspace
+      } catch (error) {
+        workspace = undefined
+      }
+      if (workspace !== undefined && typeof workspace.archiveSession === 'function') {
+        return workspace.archiveSession(sessionId, { stopActivity: true }).catch(function () {
+          if (typeof window !== 'undefined') window.location.reload()
+        })
+      }
+      if (typeof window !== 'undefined') window.location.reload()
+      return Promise.resolve()
+    }
+
+    /**
      * Session row menu item: delete one session by moving its log to the trash.
      * The slot hands over the session id (as a string or a props object).
      */
@@ -909,7 +930,7 @@ window.__ModuleLoader__.load({
               failure.code = body.code
               throw failure
             }
-            window.location.reload()
+            return hideRow(sessionId)
           })
         }).catch(function (error) {
           busyState[1](false)
