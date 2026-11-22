@@ -19,6 +19,7 @@
  * `memory` tool; when it does not, the policy falls back to editing the file
  * with the built-in filesystem tools.
  */
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
@@ -357,6 +358,16 @@ function policy(storePaths) {
   ].join('\n')
 }
 
+/** Build a complete user message: the inbox accepts UserMessage, not a partial literal. */
+export function memoryMessage(text) {
+  return {
+    id: randomUUID(),
+    role: 'user',
+    content: [{ type: 'text', text }],
+    source: { kind: 'user' },
+  }
+}
+
 /** Resolve the session working directory, falling back to the process cwd. */
 async function workingDirectory(ctx, agent, signal) {
   try {
@@ -510,7 +521,7 @@ export function apply(ctx, config) {
         }
         const text = renderDigest(cwd)
         if (text === '') return
-        agent.inject({ content: [{ type: 'text', text }], source: { kind: 'icex-memory' } })
+        agent.inject(memoryMessage(text))
       } catch (error) {
         ctx.logger?.warn?.('icex-dsh-memory: digest injection failed: ' + String(error))
       }
