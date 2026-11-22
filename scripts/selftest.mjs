@@ -29,8 +29,6 @@ check('duplicate similarity', m.similarity('回答要结论先行', '回答要�
 check('secret rejected', (() => { try { m.makeEntry('api_key=abcd1234efgh', 'pref', 'x'); return false } catch { return true } })())
 check('search finds fact', m.searchEntries(m.parseEntries(readFileSync(store, 'utf8')), '结论', 5).length === 1)
 
-const injected = m.memoryMessage('hello')
-check('inject message is a full UserMessage', injected.role === 'user' && typeof injected.id === 'string' && injected.id.length > 8 && injected.source.kind === 'user' && Array.isArray(injected.content))
 
 // consolidation: dedupe + archive, prose preserved
 const c = join(m.HOME, 'C.md')

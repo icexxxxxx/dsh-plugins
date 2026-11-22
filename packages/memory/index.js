@@ -2,9 +2,8 @@
  * icex-dsh-memory — cross-session memory for DeepSeek Harness.
  *
  * Two halves, both host-side:
- * 1. A budgeted digest of durable facts is injected once per agent as an inbox
- *    message (`agent.inject`), so it never disturbs the system-prompt prefix and
- *    stays visible in the session log.
+ * 1. A budgeted digest of durable facts enters the system prompt as a
+ *    session-scoped section, computed once when the agent is created.
  * 2. A `memory` tool reads and writes those facts, one line per fact, with a
  *    provenance pointer back to the session that produced it.
  *
@@ -358,16 +357,6 @@ function policy(storePaths) {
   ].join('\n')
 }
 
-/** Build a complete user message: the inbox accepts UserMessage, not a partial literal. */
-export function memoryMessage(text) {
-  return {
-    id: randomUUID(),
-    role: 'user',
-    content: [{ type: 'text', text }],
-    source: { kind: 'user' },
-  }
-}
-
 /** Resolve the session working directory, falling back to the process cwd. */
 async function workingDirectory(ctx, agent, signal) {
   try {
@@ -505,7 +494,7 @@ export function apply(ctx, config) {
 
   ctx.on('agent/created', (payload) => {
     const agent = payload?.agent ?? payload
-    if (agent === undefined || typeof agent.inject !== 'function') return
+    if (agent === undefined || agent.ctx === undefined) return
     void (async () => {
       try {
         const cwd = await workingDirectory(ctx, agent)
@@ -521,7 +510,14 @@ export function apply(ctx, config) {
         }
         const text = renderDigest(cwd)
         if (text === '') return
-        agent.inject(memoryMessage(text))
+        const agentCtx = agent.ctx
+        if (agentCtx === undefined || agentCtx.systemPrompt === undefined || typeof agentCtx.systemPrompt.section !== 'function') return
+        agentCtx.systemPrompt.section({
+          name: 'icex-memory:digest',
+          order: 950,
+          text: text,
+          interpolate: false,
+        })
       } catch (error) {
         ctx.logger?.warn?.('icex-dsh-memory: digest injection failed: ' + String(error))
       }

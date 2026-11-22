@@ -777,6 +777,10 @@ window.__ModuleLoader__.load({
       'rail.jump': 'Jump to input {index}: {prompt}',
       'rail.input': 'Input {index}',
       'rail.fallback': 'Turn {turn}',
+      'menu.deleteSession': 'Delete session',
+      'menu.deleting': 'Deleting…',
+      'menu.deleteConfirm': 'Delete this session? Its log moves to the trash folder.',
+      'menu.deleteFailed': 'Delete failed: {message}',
     }
 
     const zh = {
@@ -798,6 +802,10 @@ window.__ModuleLoader__.load({
       'rail.label': '输入锚点',
       'rail.jump': '跳转到第 {index} 条输入：{prompt}',
       'rail.input': '第 {index} 条输入',
+      'menu.deleteSession': '删除会话',
+      'menu.deleting': '删除中…',
+      'menu.deleteConfirm': '删除这个会话？日志会移到回收站目录，可以再捞回来。',
+      'menu.deleteFailed': '删除失败：{message}',
       'rail.fallback': '第 {turn} 轮',
     }
 
@@ -867,6 +875,63 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /**
+     * Session row menu item: delete one session by moving its log to the trash.
+     * The slot hands over the session id (as a string or a props object).
+     */
+    function DeleteSessionItem(props) {
+      const t = translator(props !== null && typeof props === 'object' ? props.t : undefined)
+      const sessionId = typeof props === 'string'
+        ? props
+        : props !== null && typeof props === 'object'
+          ? props.sessionId ?? props.id ?? props.value
+          : undefined
+      const busyState = useState(false)
+      const busy = busyState[0]
+      if (typeof sessionId !== 'string' || sessionId === '') return null
+
+      function remove() {
+        if (typeof window === 'undefined') return
+        if (window.confirm(t('menu.deleteConfirm')) !== true) return
+        busyState[1](true)
+        fetch('/api/icex-fixer/delete-session', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: sessionId }),
+        }).then(function (response) {
+          return response.json().then(function (body) {
+            if (body.ok !== true) throw new Error(body.error ?? String(response.status))
+            window.location.reload()
+          })
+        }).catch(function (error) {
+          busyState[1](false)
+          window.alert(t('menu.deleteFailed', { message: String(error.message ?? error) }))
+        })
+      }
+
+      return h('button', {
+        type: 'button',
+        role: 'menuitem',
+        disabled: busy,
+        className: 'icex-menu-danger',
+        style: {
+          display: 'block',
+          width: '100%',
+          padding: '6px 10px',
+          border: 0,
+          borderRadius: 'var(--dsw-radius-sm, 6px)',
+          background: 'transparent',
+          color: 'var(--dsw-alias-state-error-primary)',
+          textAlign: 'left',
+          font: 'inherit',
+          cursor: busy ? 'default' : 'pointer',
+          opacity: busy ? 0.6 : 1,
+        },
+        onClick: remove,
+      }, busy ? t('menu.deleting') : t('menu.deleteSession'))
+    }
+
     function apply(ctx) {
       runtimeContext = ctx
       ctx.effect(installStyles, 'icex-dsh-fixer: styles')
@@ -898,6 +963,14 @@ window.__ModuleLoader__.load({
           key: PACKAGE,
           locale: NS,
         }, SettingsPage)
+      })
+      ctx.slots.inject('sidebar.workspaces.session.menu.item', function () {
+        return ctx.slots.register({
+          name: 'sidebar.workspaces.session.menu.item',
+          id: 'icex-fixer-delete-session',
+          order: 900,
+          locale: NS,
+        }, DeleteSessionItem)
       })
     }
 
