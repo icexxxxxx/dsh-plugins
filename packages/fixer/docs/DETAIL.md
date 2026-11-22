@@ -20,6 +20,15 @@
 - 需要系统辅助功能（Accessibility）和输入监控权限；helper 只监听右侧 Option，不记录其他键盘，不联网。
 - helper 日志：/tmp/icex-dsh-fixer-summon-<uid>.log；源码在 native/summon.swift，重新编译运行 native/build.sh。
 
+**3. 纯净模式（关闭全部插件）**
+
+- 在插件详情页的「纯净模式」里打开开关：按 profile 顺序关闭除 `@deepseek-ai/dsh-base`、`@deepseek-ai/dsh-web-app` 和本插件以外的所有插件层。
+- 关闭前先把当前启用的插件名单写到 `~/.dsh/fixer/bare-mode.json`（按 profile 分开），确认写成功后才开始关；所以中途失败、刷新或重启都不影响恢复。
+- 本插件保持加载（否则开关本身会消失），但会隐藏自己的界面改动：左侧圆点、会话菜单的「删除会话」、以及对原生右侧导航的隐藏。聊天区看起来就是 DSH 原貌。
+- 恢复：同一个开关拨回来，按快照顺序重新启用。想手动恢复也行：插件页里每个插件仍然可以单独打开；快照文件丢了也不影响。
+- 没关掉的插件会显示在开关下方（例如它还被别的插件依赖），其余插件会照常关闭。
+- 兜底：即使在纯净模式下，标准的插件页仍然在，可以逐个把插件打开；如果页面本身出问题，在页面 Console 里执行 `fetch('/api/icex-fixer/bare-mode', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"action":"off"}' })` 也能恢复（这个接口和页面共用登录态，命令行直接 curl 会 401）。
+
 ## 设置项
 
 | 设置 | 默认 | 说明 |
@@ -29,7 +38,7 @@
 | 隐藏原生右侧轮次导航 | 开启 | 仅在本插件导航开启时生效 |
 | 双击右 Option 唤起 | 开启 | macOS 原生 helper；切到 DSH 窗口所在桌面并置顶定位；可选 All Desktops |
 
-锚点和悬停延迟保存在当前浏览器的 localStorage；唤起功能由 Host 半启动的原生 helper 提供，默认开启，不需要额外保存设置。
+锚点和悬停延迟保存在当前浏览器的 localStorage；唤起功能由 Host 半启动的原生 helper 提供，默认开启，不需要额外保存设置。纯净模式的状态保存在 profile 的 Host 上（`~/.dsh/fixer/bare-mode.json`），刷新或重启后仍然有效。
 
 ## 使用
 

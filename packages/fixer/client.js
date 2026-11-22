@@ -1,10 +1,11 @@
 /**
  * icex-dsh-fixer client bundle.
  *
- * Two browser-side features over the shipped DSH web client:
+ * Browser-side features over the shipped DSH web client:
  * 1. A left-side dot rail anchored on each user turn; hover (1 s by default)
  *    reveals the input, click pages history in when needed and scrolls to it.
- * 2. A settings page for the rail and for the native window summon helper.
+ * 2. A settings page for the rail, the native window summon helper, and bare
+ *    mode (turn every other plugin off and back on).
  *
  * Hand-written in the module-loader factory format, so it needs no build step.
  * Only react and react-dom are read from the platform module table.
@@ -29,6 +30,7 @@ window.__ModuleLoader__.load({
     const PACKAGE = 'icex-dsh-fixer'
     const NS = 'icex-dsh-fixer'
     const SETTINGS_KEY = 'icex-dsh-fixer.settings.v1'
+    const BARE_KEY = 'icex-dsh-fixer.bare.v1'
     const MIN_DELAY = 200
     const MAX_DELAY = 3000
     const RAIL_GAP = 34
@@ -127,6 +129,74 @@ window.__ModuleLoader__.load({
 
     function useSettings() {
       return useSyncExternalStore(settingsStore.subscribe, settingsStore.get)
+    }
+
+    /** Mirrored in this browser so the first paint already hides bare-mode additions. */
+    const DEFAULT_BARE = Object.freeze({ active: false, count: 0 })
+
+    function normalizeBare(raw) {
+      const value = raw !== null && typeof raw === 'object' ? raw : {}
+      return Object.freeze({
+        active: value.active === true,
+        count: integer(value.count, 0, 999, 0),
+      })
+    }
+
+    function readBare() {
+      const storage = browserStorage()
+      if (storage === null) return DEFAULT_BARE
+      try {
+        const raw = storage.getItem(BARE_KEY)
+        return raw === null ? DEFAULT_BARE : normalizeBare(JSON.parse(raw))
+      } catch (error) {
+        return DEFAULT_BARE
+      }
+    }
+
+    function sameBare(left, right) {
+      return left.active === right.active && left.count === right.count
+    }
+
+    function createBareStore() {
+      let state = readBare()
+      const listeners = new Set()
+      return {
+        get() {
+          return state
+        },
+        subscribe(listener) {
+          listeners.add(listener)
+          return function () {
+            listeners.delete(listener)
+          }
+        },
+        update(patch) {
+          const next = normalizeBare(Object.assign({}, state, patch))
+          if (sameBare(state, next)) return
+          state = next
+          const storage = browserStorage()
+          if (storage !== null) {
+            try {
+              storage.setItem(BARE_KEY, JSON.stringify(state))
+            } catch (error) {
+              // Private mode or a full quota keeps the in-memory value.
+            }
+          }
+          listeners.forEach(function (listener) {
+            try {
+              listener()
+            } catch (error) {
+              console.error('[icex-dsh-fixer] bare-mode listener failed', error)
+            }
+          })
+        },
+      }
+    }
+
+    const bareStore = createBareStore()
+
+    function useBare() {
+      return useSyncExternalStore(bareStore.subscribe, bareStore.get)
     }
 
     function flatten(text) {
@@ -257,10 +327,113 @@ window.__ModuleLoader__.load({
         className: 'icex-fixer-switch',
         'aria-checked': props.checked,
         'aria-label': props.label,
+        disabled: props.disabled === true,
         onClick: function () {
+          if (props.disabled === true) return
           props.onChange(!props.checked)
         },
       }, h('span', { className: 'icex-fixer-knob', 'aria-hidden': true }))
+    }
+
+    /** One JSON reply from the bare-mode route, with the Host's refusals as errors. */
+    function bareReply(response) {
+      return response.json().then(function (body) {
+        if (body === null || typeof body !== 'object') throw new Error('empty reply')
+        if (body.ok !== true) throw new Error(typeof body.error === 'string' ? body.error : 'request failed')
+        return body
+      })
+    }
+
+    function bareStatusRequest() {
+      return fetch('/api/icex-fixer/bare-mode', {
+        credentials: 'same-origin',
+        headers: { accept: 'application/json' },
+      }).then(bareReply)
+    }
+
+    function bareSwitchRequest(action) {
+      return fetch('/api/icex-fixer/bare-mode', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: action }),
+      }).then(bareReply)
+    }
+
+    /** Apply a Host reply to the mirror so the rest of the page hides or returns. */
+    function syncBareFromReply(body) {
+      const count = Array.isArray(body.snapshot?.bundles)
+        ? body.snapshot.bundles.length
+        : Array.isArray(body.disabled) ? body.disabled.length : 0
+      bareStore.update({ active: body.active === true, count: body.active === true ? count : 0 })
+      return body
+    }
+
+    /**
+     * The bare-mode switch: turn every plugin off, then all back on. The Host
+     * keeps the snapshot, so this page only reports and reloads.
+     */
+    function BareModeSection(props) {
+      const t = translator(props.t)
+      const bare = useBare()
+      const busyState = useState(false)
+      const noteState = useState(null)
+      const busy = busyState[0]
+      const setBusy = busyState[1]
+      const note = noteState[0]
+      const setNote = noteState[1]
+
+      useEffect(function () {
+        let live = true
+        bareStatusRequest().then(function (body) {
+          if (live) syncBareFromReply(body)
+        }).catch(function () {
+          // No route means this Host half predates the feature; the switch
+          // then reports the failure itself.
+        })
+        return function () {
+          live = false
+        }
+      }, [])
+
+      function toggle() {
+        if (busy) return
+        const next = bare.active !== true
+        if (next && typeof window !== 'undefined' && window.confirm(t('bare.confirm')) !== true) return
+        setBusy(true)
+        setNote(null)
+        bareSwitchRequest(next ? 'on' : 'off').then(function (body) {
+          const result = syncBareFromReply(body)
+          const failed = Array.isArray(result.failed) ? result.failed : []
+          if (failed.length > 0) {
+            setBusy(false)
+            setNote(t('bare.partial', { names: failed.map(function (item) { return item.name }).join(', ') }))
+            return
+          }
+          if (typeof window !== 'undefined') window.location.reload()
+        }).catch(function (error) {
+          setBusy(false)
+          setNote(t('bare.failed', { message: String(error?.message ?? error) }))
+        })
+      }
+
+      return h(SettingRow, {
+        title: t('bare.title'),
+        description: t('bare.desc'),
+        switchRow: true,
+      },
+        h('div', { className: 'icex-fixer-bareControl' },
+          h(Toggle, {
+            checked: bare.active,
+            label: t('bare.title'),
+            disabled: busy,
+            onChange: toggle,
+          }),
+          h('div', { className: 'icex-fixer-value' },
+            busy
+              ? t('bare.busy')
+              : bare.active ? t('bare.on', { count: bare.count }) : t('bare.off')),
+          note === null ? null : h('div', { className: 'icex-fixer-hint icex-fixer-error' }, note)))
     }
 
     function SettingsPage(props) {
@@ -323,7 +496,10 @@ window.__ModuleLoader__.load({
             switchRow: true,
           },
             h('span', { className: 'icex-fixer-value' }, t('settings.summon.status')))),
-        h('div', { className: 'icex-fixer-hint' }, t('settings.saved')))
+        h('div', { className: 'icex-fixer-hint' }, t('settings.saved')),
+        h('div', { className: 'icex-fixer-heading' }, t('bare.section')),
+        h('div', { className: 'icex-fixer-card' }, h(BareModeSection, { t: props.t })),
+        h('div', { className: 'icex-fixer-hint' }, t('bare.hint')))
     }
 
     function selectChatItems(snapshot) {
@@ -735,6 +911,7 @@ window.__ModuleLoader__.load({
 
     function AnchorDock(props) {
       const settings = useSettings()
+      const bare = useBare()
       const hostRef = useRef(null)
       const readyState = useState(false)
       const portalReady = readyState[0]
@@ -746,6 +923,7 @@ window.__ModuleLoader__.load({
 
       const host = h('span', { ref: hostRef, hidden: true, 'data-icex-fixer-anchor-host': '' })
       const canPortal = settings.anchorsEnabled
+        && bare.active !== true
         && portalReady
         && typeof document !== 'undefined'
         && document.body !== null
@@ -774,6 +952,16 @@ window.__ModuleLoader__.load({
       'settings.summon.desc': 'Double-tap right Option to switch to the DSH window and bring it to the top of its desktop: full width, current height, focused. If the window is on another desktop or display, it switches there instead of moving the window; All Desktops in the Dock menu makes it follow every desktop, with the tradeoff that it is visible everywhere while open.',
       'settings.summon.status': 'Always on · macOS',
       'settings.saved': 'Stored in this browser; the options belong to this plugin.',
+      'bare.section': 'Bare mode',
+      'bare.title': 'Turn every plugin off',
+      'bare.desc': 'Close every plugin layer and look at DSH as it ships. The plugins stay installed; this same switch turns them all back on. This plugin stays loaded so the switch is reachable, and hides its own changes while bare mode is on.',
+      'bare.off': 'Plugins run as configured',
+      'bare.on': 'All plugins are off ({count})',
+      'bare.busy': 'Working…',
+      'bare.confirm': 'Turn off every plugin? Sessions and settings stay untouched, and this same switch turns them all back on. The page reloads once after the change.',
+      'bare.partial': 'These plugins stayed on: {names}',
+      'bare.failed': 'Failed: {message}',
+      'bare.hint': 'The state lives in this profile on the Host, so it survives a reload or restart.',
       'rail.label': 'Input anchors',
       'rail.jump': 'Jump to input {index}: {prompt}',
       'rail.input': 'Input {index}',
@@ -801,6 +989,16 @@ window.__ModuleLoader__.load({
       'settings.summon.desc': '双击右 Option 会切到 DSH 窗口所在的桌面并置顶定位：顶部、全宽、保持当前高度并聚焦。窗口在别的桌面/显示器时会切过去，而不是把窗口搬过来；在 Dock 里设为“所有桌面”可让它跟随每个桌面，代价是窗口打开时每个桌面都可见。',
       'settings.summon.status': '默认开启 · macOS',
       'settings.saved': '设置保存在当前浏览器，选项仅属于本插件。',
+      'bare.section': '纯净模式',
+      'bare.title': '关闭全部插件',
+      'bare.desc': '关掉所有插件层，只看 DSH 原貌。插件不会被卸载，拨回来就全部恢复；本插件保持加载以便随时恢复，开启时会隐藏自己的界面改动。',
+      'bare.off': '插件按当前设置运行',
+      'bare.on': '已关闭全部插件（{count} 个）',
+      'bare.busy': '处理中…',
+      'bare.confirm': '关闭全部插件？会话和设置不受影响，用同一个开关就能全部恢复。切换后页面会刷新一次。',
+      'bare.partial': '这些插件没能关闭：{names}',
+      'bare.failed': '失败：{message}',
+      'bare.hint': '状态保存在这个 profile 的 Host 上，刷新或重启后仍然有效。',
       'rail.label': '输入锚点',
       'rail.jump': '跳转到第 {index} 条输入：{prompt}',
       'rail.input': '第 {index} 条输入',
@@ -837,6 +1035,8 @@ window.__ModuleLoader__.load({
       '.icex-fixer-range { width: 100%; accent-color: var(--dsw-alias-state-business-primary); }',
       '.icex-fixer-scale { display: flex; justify-content: space-between; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); font-variant-numeric: tabular-nums; }',
       '.icex-fixer-hint { margin-top: 2px; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-caption); }',
+      '.icex-fixer-bareControl { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; text-align: right; max-width: 260px; }',
+      '.icex-fixer-error { color: var(--dsw-alias-state-error-primary, #d5484b); }',
       '.icex-rail { position: fixed; z-index: 40; width: 18px; transform: translateY(-50%); pointer-events: auto; }',
       '.icex-rail-scroller { position: relative; max-height: inherit; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 2px 0; }',
       '.icex-rail-scroller::-webkit-scrollbar { display: none; }',
@@ -874,7 +1074,7 @@ window.__ModuleLoader__.load({
       const state = settingsStore.get()
       document.documentElement.toggleAttribute(
         'data-icex-fixer-hide-native-rail',
-        state.anchorsEnabled && state.hideNativeRail,
+        state.anchorsEnabled && state.hideNativeRail && bareStore.get().active !== true,
       )
     }
 
@@ -905,6 +1105,7 @@ window.__ModuleLoader__.load({
      */
     function DeleteSessionItem(props) {
       const t = translator(props !== null && typeof props === 'object' ? props.t : undefined)
+      const bare = useBare()
       const sessionId = typeof props === 'string'
         ? props
         : props !== null && typeof props === 'object'
@@ -912,6 +1113,7 @@ window.__ModuleLoader__.load({
           : undefined
       const busyState = useState(false)
       const busy = busyState[0]
+      if (bare.active === true) return null
       if (typeof sessionId !== 'string' || sessionId === '') return null
 
       function remove() {
@@ -955,8 +1157,10 @@ window.__ModuleLoader__.load({
       ctx.effect(function () {
         syncNativeRailAttribute()
         const unsubscribe = settingsStore.subscribe(syncNativeRailAttribute)
+        const unsubscribeBare = bareStore.subscribe(syncNativeRailAttribute)
         return function () {
           unsubscribe()
+          unsubscribeBare()
           if (typeof document !== 'undefined') {
             document.documentElement.removeAttribute('data-icex-fixer-hide-native-rail')
             document.documentElement.removeAttribute('data-icex-fixer-rail-mounted')
@@ -1000,6 +1204,13 @@ window.__ModuleLoader__.load({
         SettingsPage: SettingsPage,
         findAnchor: findAnchor,
         findUserRow: findUserRow,
+        AnchorDock: AnchorDock,
+        DeleteSessionItem: DeleteSessionItem,
+        BareModeSection: BareModeSection,
+        bareStore: bareStore,
+        readBare: readBare,
+        syncBareFromReply: syncBareFromReply,
+        syncNativeRailAttribute: syncNativeRailAttribute,
       }
     }
     return plugin

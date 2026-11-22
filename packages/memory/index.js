@@ -40,8 +40,8 @@ const LOCK_FILE = join(HOME, '.consolidate.lock')
 const CONSOLIDATE = { intervalDays: 7, maxEntries: 60, dedupe: 0.85 }
 const ENTRY_RE = /^- \[([a-z]+)\] (.+?)(?: <!-- id=([0-9a-z]+) src=(\S+) at=([0-9-]+) -->)?$/u
 const MAX_TEXT = 200
-const BUDGET = { global: 1000, project: 1200 }
-const TAKE = { global: 12, project: 12 }
+const BUDGET = { global: 1400, project: 1200 }
+const TAKE = { global: 16, project: 12 }
 
 /** A single durable fact. */
 export function makeEntry(text, kind, src) {
@@ -316,6 +316,9 @@ export function renderDigest(cwd) {
     sections.join('\n\n'),
     '',
     'Store: ' + paths.join(' · '),
+    '',
+    'Before finishing a turn, if the user stated a durable preference, made a decision, or paid for a pitfall,',
+    'record it with the memory tool (one fact per entry). Mention it only when the user would want to change it.',
     '</memory-context>',
   ].join('\n')
 }
