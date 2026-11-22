@@ -200,7 +200,13 @@ async function verifyNpm(name, version) {
 async function verifyIndex(version) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      const body = execFileSync('curl', ['-fsS', '-m', '10', INDEX_URL + '?v=' + Date.now()], { encoding: 'utf8' })
+      const url = INDEX_URL + '?v=' + Date.now()
+      let body
+      try {
+        body = execFileSync('curl', ['-fsS', '-m', '10', url], { encoding: 'utf8' })
+      } catch (error) {
+        body = execFileSync('curl', ['-fsS', '-m', '10', '-x', PROXY, url], { encoding: 'utf8' })
+      }
       const doc = JSON.parse(body)
       const ok = doc.plugins.every((plugin) => plugin.versions?.every((item) => item.version === version && item.source?.type === 'npm'))
       if (ok) {
