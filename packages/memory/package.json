@@ -1,6 +1,6 @@
 {
   "name": "icex-dsh-memory",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "description": "Cross-session memory for DeepSeek Harness: a budgeted MEMORY.md digest injected once per session, plus one memory tool with provenance back to the producing session.",
   "exports": {
