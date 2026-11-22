@@ -84,7 +84,7 @@ function sessionDirectories(id) {
 }
 
 /** Move a session's logs to the trash; the row disappears from the next list read. */
-async function handleDeleteSession(request) {
+async function handleDeleteSession(request, ctx) {
   let body
   try {
     body = await request.json()
@@ -94,13 +94,15 @@ async function handleDeleteSession(request) {
   const id = typeof body?.id === 'string' ? body.id.trim() : ''
   if (id === '') return jsonResponse({ ok: false, error: 'id is required' }, 400)
 
-  const sessions = request.ctx?.get?.('sessions')
+  let live = false
   try {
-    if (sessions !== undefined && typeof sessions.get === 'function' && sessions.get(id) !== undefined) {
-      return jsonResponse({ ok: false, error: 'session is open; close it first', code: 'live' }, 409)
-    }
+    const sessions = ctx.get('sessions')
+    if (sessions !== undefined && typeof sessions.get === 'function') live = sessions.get(id) !== undefined
   } catch (error) {
-    // A registry probe must never block deletion of a closed session.
+    // Without the registry, fall through to the on-disk check only.
+  }
+  if (live) {
+    return jsonResponse({ ok: false, error: 'session is currently open; switch to another session first', code: 'live' }, 409)
   }
 
   const dirs = sessionDirectories(id)
@@ -125,7 +127,7 @@ function registerSessionDeleteRoute(ctx) {
       path: '/api/icex-fixer/delete-session',
       methods: ['POST'],
       requestBody: 'buffered',
-      fetch: (request) => handleDeleteSession(request),
+      fetch: (request) => handleDeleteSession(request, scope),
     }), 'icex-dsh-fixer: session delete route')
   })
 }

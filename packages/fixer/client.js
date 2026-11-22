@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const ReactDOM = require('react-dom')
+    const primitives = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
     const Fragment = React.Fragment
     const useCallback = React.useCallback
@@ -781,6 +782,7 @@ window.__ModuleLoader__.load({
       'menu.deleting': 'Deleting…',
       'menu.deleteConfirm': 'Delete this session? Its log moves to the trash folder.',
       'menu.deleteFailed': 'Delete failed: {message}',
+      'menu.deleteLive': 'This session is open. Switch to another session, then delete it.',
     }
 
     const zh = {
@@ -806,6 +808,7 @@ window.__ModuleLoader__.load({
       'menu.deleting': '删除中…',
       'menu.deleteConfirm': '删除这个会话？日志会移到回收站目录，可以再捞回来。',
       'menu.deleteFailed': '删除失败：{message}',
+      'menu.deleteLive': '这个会话正开着。先切到别的会话，再回来删除。',
       'rail.fallback': '第 {turn} 轮',
     }
 
@@ -849,10 +852,6 @@ window.__ModuleLoader__.load({
       '.icex-tip-head { margin-bottom: 2px; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }',
       '.icex-tip-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 18px; }',
       'html[data-icex-fixer-hide-native-rail][data-icex-fixer-rail-mounted] [data-conversation-content] nav[aria-label] { display: none !important; }',
-      '.icex-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 6px 8px; border: 0; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; line-height: 18px; text-align: left; cursor: default; }',
-      '.icex-menu-item:hover, .icex-menu-item:focus-visible { background: var(--dsw-alias-bg-layer-1); outline: none; box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1); }',
-      '.icex-menu-item:disabled { opacity: 0.6; }',
-      '.icex-menu-danger { color: var(--dsw-alias-state-error-primary, #d5484b); }',
       '@media (prefers-reduced-motion: reduce) { .icex-rail-dot { transition: none; } .icex-rail-btn[data-busy] .icex-rail-dot { animation: none; } }',
     ]
 
@@ -905,21 +904,24 @@ window.__ModuleLoader__.load({
           body: JSON.stringify({ id: sessionId }),
         }).then(function (response) {
           return response.json().then(function (body) {
-            if (body.ok !== true) throw new Error(body.error ?? String(response.status))
+            if (body.ok !== true) {
+              const failure = new Error(body.error ?? String(response.status))
+              failure.code = body.code
+              throw failure
+            }
             window.location.reload()
           })
         }).catch(function (error) {
           busyState[1](false)
-          window.alert(t('menu.deleteFailed', { message: String(error.message ?? error) }))
+          window.alert(error.code === 'live' ? t('menu.deleteLive') : t('menu.deleteFailed', { message: String(error.message ?? error) }))
         })
       }
 
-      return h('button', {
-        type: 'button',
-        role: 'menuitem',
+      return h(primitives.MenuItemButton, {
+        icon: h(primitives.IconTrashOutlineRegular, { size: 14, 'aria-hidden': 'true' }),
         disabled: busy,
-        className: 'icex-menu-item icex-menu-danger',
-        onClick: remove,
+        onSelect: remove,
+        style: { color: 'var(--dsw-alias-state-error-primary, #d5484b)' },
       }, busy ? t('menu.deleting') : t('menu.deleteSession'))
     }
 
