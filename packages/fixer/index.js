@@ -118,12 +118,14 @@ async function handleDeleteSession(request) {
 
 /** Claim the session-delete route when this host carries a browser connection. */
 function registerSessionDeleteRoute(ctx) {
-  const connection = ctx.get('connection')
-  if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
-  ctx.effect(() => connection.fetch.register({
-    path: '/api/icex-fixer/delete-session',
-    methods: ['POST'],
-    requestBody: 'buffered',
-    fetch: (request) => handleDeleteSession(request),
-  }), 'icex-dsh-fixer: session delete route')
+  ctx.inject(['connection'], (scope) => {
+    const connection = scope.connection
+    if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
+    scope.effect(() => connection.fetch.register({
+      path: '/api/icex-fixer/delete-session',
+      methods: ['POST'],
+      requestBody: 'buffered',
+      fetch: (request) => handleDeleteSession(request),
+    }), 'icex-dsh-fixer: session delete route')
+  })
 }

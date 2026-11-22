@@ -48,6 +48,7 @@ const fakeConnection = {
 }
 const fakeCtx = {
   get: (key) => (key === 'connection' ? fakeConnection : undefined),
+  inject: (names, callback) => callback({ connection: fakeConnection, effect: (fn) => fn() }),
   effect: (fn) => { const dispose = fn(); return typeof dispose === 'function' ? dispose : () => {} },
   systemPrompt: { section: () => {} },
   on: () => {},

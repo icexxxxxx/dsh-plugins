@@ -469,14 +469,16 @@ export async function handleEditorRequest(request) {
 
 /** Claim the settings-editor route when this host carries a browser connection. */
 function registerEditorRoute(ctx) {
-  const connection = ctx.get('connection')
-  if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
-  ctx.effect(() => connection.fetch.register({
-    path: '/api/icex-memory',
-    methods: ['GET', 'POST'],
-    requestBody: 'buffered',
-    fetch: handleEditorRequest,
-  }), 'icex-dsh-memory: settings editor route')
+  ctx.inject(['connection'], (scope) => {
+    const connection = scope.connection
+    if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
+    scope.effect(() => connection.fetch.register({
+      path: '/api/icex-memory',
+      methods: ['GET', 'POST'],
+      requestBody: 'buffered',
+      fetch: handleEditorRequest,
+    }), 'icex-dsh-memory: settings editor route')
+  })
 }
 
 /** Apply the plugin: one prompt section, one injection, optionally one tool. */

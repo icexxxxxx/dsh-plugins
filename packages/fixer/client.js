@@ -849,6 +849,10 @@ window.__ModuleLoader__.load({
       '.icex-tip-head { margin-bottom: 2px; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }',
       '.icex-tip-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 18px; }',
       'html[data-icex-fixer-hide-native-rail][data-icex-fixer-rail-mounted] [data-conversation-content] nav[aria-label] { display: none !important; }',
+      '.icex-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 6px 8px; border: 0; border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; line-height: 18px; text-align: left; cursor: default; }',
+      '.icex-menu-item:hover, .icex-menu-item:focus-visible { background: var(--dsw-alias-bg-layer-1); outline: none; box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l1); }',
+      '.icex-menu-item:disabled { opacity: 0.6; }',
+      '.icex-menu-danger { color: var(--dsw-alias-state-error-primary, #d5484b); }',
       '@media (prefers-reduced-motion: reduce) { .icex-rail-dot { transition: none; } .icex-rail-btn[data-busy] .icex-rail-dot { animation: none; } }',
     ]
 
@@ -914,20 +918,7 @@ window.__ModuleLoader__.load({
         type: 'button',
         role: 'menuitem',
         disabled: busy,
-        className: 'icex-menu-danger',
-        style: {
-          display: 'block',
-          width: '100%',
-          padding: '6px 10px',
-          border: 0,
-          borderRadius: 'var(--dsw-radius-sm, 6px)',
-          background: 'transparent',
-          color: 'var(--dsw-alias-state-error-primary)',
-          textAlign: 'left',
-          font: 'inherit',
-          cursor: busy ? 'default' : 'pointer',
-          opacity: busy ? 0.6 : 1,
-        },
+        className: 'icex-menu-item icex-menu-danger',
         onClick: remove,
       }, busy ? t('menu.deleting') : t('menu.deleteSession'))
     }
