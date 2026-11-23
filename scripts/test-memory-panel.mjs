@@ -88,6 +88,12 @@ const texts = {
   'panel.pending': '待判',
   'panel.noReason': '未给理由',
   'panel.noEntries': '还没有存任何东西。',
+  'panel.globalEntries': '全局记忆',
+  'panel.projectEntries': '项目记忆',
+  'panel.noProjectEntries': '这个项目还没有记忆。',
+  'panel.noSessionCwd': '还拿不到当前工作目录。',
+  'kind.pref': '偏好',
+  'kind.project': '项目',
   'panel.consolidateShort': '整理',
   'panel.refreshShort': '刷新',
   'panel.filterAll': '全部',
@@ -122,7 +128,7 @@ const payload = {
   ok: true,
   stats: { globalEntries: 1, projectEntries: 0, digestChars: 120, truncated: false, candidates: 2, lastConsolidatedAt: '2026-11-22T12:00:00.000Z' },
   global: [{ id: 'g1', kind: 'pref', text: '中文沟通，结论先行', src: 's@1', at: '2026-11-20' }],
-  project: { path: null, entries: [] },
+  project: { path: '/Users/icex/wtf/.dsh/memory/MEMORY.md', entries: [{ id: 'p1', kind: 'project', text: '项目里的一条约定', src: 's@4', at: '2026-11-21', scope: 'project' }] },
   candidates: [
     { id: 'c1', text: '以后所有回答都要先给结论', src: 's@2', at: '2026-11-22', decision: { action: 'promote', reason: '用户明确要求', at: '2026-11-22' } },
     { id: 'c2', text: '不要用表格', src: 's@3', at: '2026-11-22', decision: null },
@@ -140,7 +146,8 @@ check('offers edit and delete', flat.includes('data-action\":\"edit') && flat.in
 check('renders both candidates', flat.includes('以后所有回答都要先给结论') && flat.includes('不要用表格'))
 check('shows the model verdict', flat.includes('用户明确要求') && flat.includes('icex-mem-pill'))
 check('shows undecided state', flat.includes('模型还没判断这条。') && flat.includes('待判'))
-check('renders entries and activity', flat.includes('已存条目') && flat.includes('最近活动') && flat.includes('中文沟通，结论先行') && flat.includes('icex-mem-event'))
+check('renders global and project memory', flat.includes('全局记忆') && flat.includes('项目记忆') && flat.includes('项目里的一条约定') && flat.includes('MEMORY.md'))
+check('renders activity', flat.includes('最近活动') && flat.includes('中文沟通，结论先行') && flat.includes('icex-mem-event'))
 
 // click "转正" on c2
 function findAction(node, action) {

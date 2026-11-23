@@ -621,7 +621,7 @@ export function panelPayload(cwd) {
   const projectEntries = projectFileForCwd === null ? [] : readStore(projectFileForCwd).entries
   const digest = renderDigest(cwd)
   const state = readState()
-  const view = (entry) => ({ id: entry.id, kind: entry.kind, text: entry.text, src: entry.src, at: entry.at })
+  const view = (entry, scope) => ({ id: entry.id, kind: entry.kind, text: entry.text, src: entry.src, at: entry.at, scope })
   return {
     ok: true,
     stats: {
@@ -633,8 +633,8 @@ export function panelPayload(cwd) {
       lastConsolidatedAt: typeof state.lastConsolidatedAt === 'string' ? state.lastConsolidatedAt : null,
       lastReport: Array.isArray(state.lastReport) ? state.lastReport : [],
     },
-    global: globalEntries.map(view),
-    project: { path: projectFileForCwd, entries: projectEntries.map(view) },
+    global: globalEntries.map((entry) => view(entry, 'global')),
+    project: { path: projectFileForCwd, entries: projectEntries.map((entry) => view(entry, 'project')) },
     candidates: readPending().map((entry) => ({
       id: entry.id,
       text: entry.text,
@@ -661,9 +661,23 @@ function promoteCandidate(id, scope, cwd) {
 }
 
 /** GET panel / POST candidate actions / POST consolidate; all JSON, same origin. */
+export function panelCwd(ctx, params) {
+  const explicit = params.get('cwd') ?? ''
+  if (explicit !== '') return explicit
+  const sessionId = params.get('session') ?? ''
+  if (sessionId === '' || ctx === undefined) return ''
+  try {
+    const live = ctx.get('sessions')?.get?.(sessionId)
+    const cwd = live?.header?.cwd ?? live?.cwd
+    return typeof cwd === 'string' ? cwd : ''
+  } catch (error) {
+    return ''
+  }
+}
+
 export async function handlePanelRequest(request, ctx) {
   const url = new URL(request.url)
-  const cwd = url.searchParams.get('cwd') ?? ''
+  const cwd = panelCwd(ctx, url.searchParams)
   if (request.method === 'GET') return jsonResponse(panelPayload(cwd))
 
   let body
@@ -678,7 +692,9 @@ export async function handlePanelRequest(request, ctx) {
     const id = typeof body?.id === 'string' ? body.id : ''
     const text = typeof body?.text === 'string' ? body.text.trim() : ''
     if (id === '' || text === '') return jsonResponse({ ok: false, error: 'id and text are required' }, 400)
-    const existing = readStore(GLOBAL_FILE).entries.find((entry) => entry.id === id)
+    const file = body?.scope === 'project' ? projectFile(cwd) : GLOBAL_FILE
+    if (file === null) return jsonResponse({ ok: false, error: 'project scope needs a working directory' }, 400)
+    const existing = readStore(file).entries.find((entry) => entry.id === id)
     if (existing === undefined) return jsonResponse({ ok: false, error: 'entry not found' }, 404)
     let replacement
     try {
@@ -686,12 +702,14 @@ export async function handlePanelRequest(request, ctx) {
     } catch (error) {
       return jsonResponse({ ok: false, error: String(error.message ?? error) }, 400)
     }
-    return jsonResponse({ ok: replaceEntry(GLOBAL_FILE, id, replacement) })
+    return jsonResponse({ ok: replaceEntry(file, id, replacement) })
   }
   if (action === 'delete') {
     const id = typeof body?.id === 'string' ? body.id : ''
     if (id === '') return jsonResponse({ ok: false, error: 'id is required' }, 400)
-    return jsonResponse({ ok: forgetEntry(GLOBAL_FILE, id) })
+    const file = body?.scope === 'project' ? projectFile(cwd) : GLOBAL_FILE
+    if (file === null) return jsonResponse({ ok: false, error: 'project scope needs a working directory' }, 400)
+    return jsonResponse({ ok: forgetEntry(file, id) })
   }
   if (action === 'consolidate') {
     const tuning = panelTuning(ctx)

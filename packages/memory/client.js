@@ -73,6 +73,15 @@ window.__ModuleLoader__.load({
       'panel.status': '{entries} entries · digest {chars} chars · {candidates} candidates',
       'panel.statusConsolidated': 'tidied {time}',
       'panel.truncatedShort': 'truncated',
+      'panel.globalEntries': 'Global memory',
+      'panel.projectEntries': 'Project memory',
+      'panel.noProjectEntries': 'Nothing stored for this project yet.',
+      'panel.noSessionCwd': 'No working directory is known for this session yet.',
+      'kind.pref': 'Preference',
+      'kind.decision': 'Decision',
+      'kind.pitfall': 'Pitfall',
+      'kind.tool': 'Tool',
+      'kind.project': 'Project',
     }
 
     const zh = {
@@ -132,6 +141,15 @@ window.__ModuleLoader__.load({
       'panel.status': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 候选',
       'panel.statusConsolidated': '整理于 {time}',
       'panel.truncatedShort': '已截断',
+      'panel.globalEntries': '全局记忆',
+      'panel.projectEntries': '项目记忆',
+      'panel.noProjectEntries': '这个项目还没有记忆。',
+      'panel.noSessionCwd': '还拿不到当前会话的工作目录。',
+      'kind.pref': '偏好',
+      'kind.decision': '决定',
+      'kind.pitfall': '坑',
+      'kind.tool': '工具',
+      'kind.project': '项目',
     }
 
     /** Minimal translator with {name} interpolation over the slot's locale texts. */
@@ -208,19 +226,19 @@ window.__ModuleLoader__.load({
         '.icex-mem-reason { overflow-wrap: anywhere; }',
         '.icex-mem-actions { display: flex; gap: 8px; }',
         '.icex-mem-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }',
-        '.icex-mem-row { position: relative; display: flex; align-items: baseline; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); }',
+        '.icex-mem-row { position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); }',
         '.icex-mem-row:hover { background: var(--dsw-alias-bg-layer-1); }',
         '.icex-mem-row + .icex-mem-row { border-top: 0.5px solid var(--dsw-alias-border-l1); }',
         '.icex-mem-row-edit { flex-direction: column; align-items: stretch; gap: 6px; }',
-        '.icex-mem-kind { flex: none; height: 18px; padding: 0 6px; border-radius: 6px; font-size: 10px; line-height: 18px; letter-spacing: 0.02em; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-kind { box-sizing: border-box; width: 100%; height: 18px; padding: 0 4px; border-radius: 6px; font-size: 10px; line-height: 18px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); }',
         '.icex-mem-kind[data-kind="pref"] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); }',
         '.icex-mem-kind[data-kind="decision"] { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }',
         '.icex-mem-kind[data-kind="pitfall"] { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent); color: var(--dsw-alias-state-error-primary); }',
         '.icex-mem-kind[data-kind="tool"] { background: color-mix(in srgb, #34d399 18%, transparent); color: #34d399; }',
         '.icex-mem-kind[data-kind="project"] { background: color-mix(in srgb, #fbbf24 18%, transparent); color: #fbbf24; }',
-        '.icex-mem-row-text { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-right: 8px; }',
+        '.icex-mem-row-text { min-width: 0; overflow-wrap: anywhere; }',
         '.icex-mem-row-date { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
-        '.icex-mem-row-actions { position: absolute; right: 2px; top: 2px; display: flex; gap: 2px; padding: 2px; border-radius: var(--dsw-radius-sm, 4px); background: var(--dsw-alias-bg-layer-1); opacity: 0; pointer-events: none; transition: opacity 120ms ease; }',
+        '.icex-mem-row-actions { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 2px; padding: 2px 4px 2px 16px; border-radius: var(--dsw-radius-sm, 4px); background: linear-gradient(to right, transparent, var(--dsw-alias-bg-layer-1) 28%); opacity: 0; pointer-events: none; transition: opacity 120ms ease; }',
         '.icex-mem-row:hover .icex-mem-row-actions, .icex-mem-row:focus-within .icex-mem-row-actions { opacity: 1; pointer-events: auto; }',
         '.icex-mem-icon-btn { padding: 0 4px; border: 0; border-radius: var(--dsw-radius-sm, 4px); background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 11px; cursor: pointer; }',
         '.icex-mem-icon-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.14)); color: var(--dsw-alias-label-primary); }',
@@ -235,6 +253,8 @@ window.__ModuleLoader__.load({
         '.icex-mem-event-text { color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }',
         '.icex-mem-event-date { color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
         '.icex-mem-empty { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }',
+        '.icex-mem-banner { margin: 8px 0 0; padding: 8px 10px; border-radius: var(--dsw-radius-md); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); color: var(--dsw-alias-state-error-primary); font-size: 12px; line-height: 18px; }',
+        '.icex-mem-path { margin: -2px 0 2px; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
         '.icex-mem-status { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-top: 0.5px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
         '.icex-mem-status-warn { color: var(--dsw-alias-label-secondary); }',
         '.icex-mem-status-error { color: var(--dsw-alias-state-error-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }',
@@ -425,7 +445,8 @@ window.__ModuleLoader__.load({
         busyState[1](true)
         errorState[1](null)
         try {
-          const response = await fetch('/api/icex-memory/panel', { credentials: 'same-origin' })
+          const query = props.sessionId === undefined ? '' : '?session=' + encodeURIComponent(props.sessionId)
+          const response = await fetch('/api/icex-memory/panel' + query, { credentials: 'same-origin' })
           const body = await response.json()
           if (body.ok !== true) throw new Error(body.error ?? String(response.status))
           dataState[1](body)
@@ -449,9 +470,11 @@ window.__ModuleLoader__.load({
           const body = await response.json()
           if (body.ok !== true) throw new Error(body.error ?? String(response.status))
           await load()
+          return true
         } catch (failure) {
           busyState[1](false)
           errorState[1](t('panel.failed', { message: String(failure.message ?? failure) }))
+          return false
         }
       }
 
@@ -467,12 +490,19 @@ window.__ModuleLoader__.load({
 
       const stats = data.stats ?? {}
       const candidates = Array.isArray(data.candidates) ? data.candidates : []
-      const entries = Array.isArray(data.global) ? data.global : []
-      const kinds = ['all'].concat(Array.from(new Set(entries.map((entry) => entry.kind))))
-      const visible = filter === 'all' ? entries : entries.filter((entry) => entry.kind === filter)
-      const activity = entries.slice(-4).reverse()
+      const globalEntries = Array.isArray(data.global) ? data.global : []
+      const projectEntries = Array.isArray(data.project?.entries) ? data.project.entries : []
+      const entries = globalEntries
+      const allEntries = globalEntries.concat(projectEntries)
+      const kinds = ['all'].concat(Array.from(new Set(allEntries.map((entry) => entry.kind))))
+      const matches = function (entry) { return filter === 'all' || entry.kind === filter }
+      const visibleGlobal = globalEntries.filter(matches)
+      const visibleProject = projectEntries.filter(matches)
+      const activity = allEntries.slice(-4).reverse()
       const total = (stats.globalEntries ?? 0) + (stats.projectEntries ?? 0)
 
+      const KIND_LABELS = { pref: t('kind.pref'), decision: t('kind.decision'), pitfall: t('kind.pitfall'), tool: t('kind.tool'), project: t('kind.project') }
+      const kindLabel = function (kind) { return KIND_LABELS[kind] ?? kind }
       function chip(label, value, count) {
         return h('button', {
           key: value,
@@ -500,8 +530,10 @@ window.__ModuleLoader__.load({
                 disabled: busy,
                 onClick: function () {
                   const text = editing.text.trim()
-                  editState[1](null)
-                  if (text !== '') void act({ action: 'update', id: entry.id, text: text })
+                  if (text === '') return
+                  void act({ action: 'update', id: entry.id, text: text, scope: entry.scope }).then(function (ok) {
+                    if (ok) editState[1](null)
+                  })
                 },
               }, t('panel.save')),
               h('button', {
@@ -512,7 +544,7 @@ window.__ModuleLoader__.load({
               }, t('panel.cancel'))))
         }
         return h('li', { key: entry.id, className: 'icex-mem-row', 'data-entry': entry.id },
-          h('span', { className: 'icex-mem-kind', 'data-kind': entry.kind }, entry.kind),
+          h('span', { className: 'icex-mem-kind', 'data-kind': entry.kind }, kindLabel(entry.kind)),
           h('span', { className: 'icex-mem-row-text' }, entry.text),
           h('span', { className: 'icex-mem-row-date' }, String(entry.at ?? '').slice(5)),
           h('span', { className: 'icex-mem-row-actions' },
@@ -532,7 +564,7 @@ window.__ModuleLoader__.load({
               disabled: busy,
               onClick: function () {
                 if (typeof window === 'undefined' || window.confirm(t('panel.deleteConfirm')) !== true) return
-                void act({ action: 'delete', id: entry.id })
+                void act({ action: 'delete', id: entry.id, scope: entry.scope })
               },
             }, t('panel.delete'))))
       }
@@ -557,10 +589,11 @@ window.__ModuleLoader__.load({
             }, t('panel.refreshShort'))),
           h('div', { className: 'icex-mem-filters', 'data-section': 'filters' },
             kinds.map(function (kind) {
-              return chip(kind === 'all' ? t('panel.filterAll') : kind, kind, kind === 'all' ? entries.length : entries.filter((entry) => entry.kind === kind).length)
+              return chip(kind === 'all' ? t('panel.filterAll') : kindLabel(kind), kind, kind === 'all' ? allEntries.length : allEntries.filter((entry) => entry.kind === kind).length)
             }))),
 
         h('div', { className: 'icex-mem-body', 'data-section': 'body' },
+          error === null ? null : h('p', { className: 'icex-mem-banner', role: 'alert' }, error),
           h('section', { className: 'icex-mem-section', 'data-section': 'candidates' },
             h('div', { className: 'icex-mem-section-head' },
               h('h3', { className: 'icex-mem-section-title' }, t('panel.candidates')),
@@ -597,11 +630,23 @@ window.__ModuleLoader__.load({
               }))),
           h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
             h('div', { className: 'icex-mem-section-head' },
-              h('h3', { className: 'icex-mem-section-title' }, t('panel.entries')),
-              h('span', { className: 'icex-mem-count' }, String(visible.length))),
-            visible.length === 0
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.globalEntries')),
+              h('span', { className: 'icex-mem-count' }, String(visibleGlobal.length))),
+            visibleGlobal.length === 0
               ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
-              : h('ul', { className: 'icex-mem-list' }, visible.slice().reverse().map(entryRow))),
+              : h('ul', { className: 'icex-mem-list' }, visibleGlobal.slice().reverse().map(entryRow))),
+          data.project !== undefined && data.project.path !== null && data.project.path !== undefined
+            ? h('section', { className: 'icex-mem-section', 'data-section': 'project' },
+              h('div', { className: 'icex-mem-section-head' },
+                h('h3', { className: 'icex-mem-section-title' }, t('panel.projectEntries')),
+                h('span', { className: 'icex-mem-count' }, String(visibleProject.length))),
+              h('p', { className: 'icex-mem-path', title: data.project.path }, data.project.path),
+              visibleProject.length === 0
+                ? h('p', { className: 'icex-mem-empty' }, t('panel.noProjectEntries'))
+                : h('ul', { className: 'icex-mem-list' }, visibleProject.slice().reverse().map(entryRow)))
+            : h('section', { className: 'icex-mem-section', 'data-section': 'project-missing' },
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.projectEntries')),
+              h('p', { className: 'icex-mem-empty' }, t('panel.noSessionCwd'))),
           h('section', { className: 'icex-mem-section', 'data-section': 'activity' },
             h('div', { className: 'icex-mem-section-head' },
               h('h3', { className: 'icex-mem-section-title' }, t('panel.activity')),
