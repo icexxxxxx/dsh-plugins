@@ -674,6 +674,25 @@ export async function handlePanelRequest(request, ctx) {
   }
   const action = typeof body?.action === 'string' ? body.action : ''
 
+  if (action === 'update') {
+    const id = typeof body?.id === 'string' ? body.id : ''
+    const text = typeof body?.text === 'string' ? body.text.trim() : ''
+    if (id === '' || text === '') return jsonResponse({ ok: false, error: 'id and text are required' }, 400)
+    const existing = readStore(GLOBAL_FILE).entries.find((entry) => entry.id === id)
+    if (existing === undefined) return jsonResponse({ ok: false, error: 'entry not found' }, 404)
+    let replacement
+    try {
+      replacement = makeEntry(text, existing.kind, existing.src)
+    } catch (error) {
+      return jsonResponse({ ok: false, error: String(error.message ?? error) }, 400)
+    }
+    return jsonResponse({ ok: replaceEntry(GLOBAL_FILE, id, replacement) })
+  }
+  if (action === 'delete') {
+    const id = typeof body?.id === 'string' ? body.id : ''
+    if (id === '') return jsonResponse({ ok: false, error: 'id is required' }, 400)
+    return jsonResponse({ ok: forgetEntry(GLOBAL_FILE, id) })
+  }
   if (action === 'consolidate') {
     const tuning = panelTuning(ctx)
     const report = [GLOBAL_FILE, projectFile(cwd)].filter((file) => file !== null && existsSync(file)).map((file) => consolidateFile(file, tuning))

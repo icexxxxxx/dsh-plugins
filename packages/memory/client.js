@@ -62,6 +62,17 @@ window.__ModuleLoader__.load({
       'panel.pending': 'pending',
       'panel.noReason': 'no reason given',
       'panel.noEntries': 'Nothing stored yet.',
+      'panel.consolidateShort': 'Tidy',
+      'panel.refreshShort': 'Refresh',
+      'panel.filterAll': 'All',
+      'panel.edit': 'Edit',
+      'panel.delete': 'Delete',
+      'panel.save': 'Save',
+      'panel.cancel': 'Cancel',
+      'panel.deleteConfirm': 'Delete this memory entry?',
+      'panel.status': '{entries} entries · digest {chars} chars · {candidates} candidates',
+      'panel.statusConsolidated': 'tidied {time}',
+      'panel.truncatedShort': 'truncated',
     }
 
     const zh = {
@@ -110,6 +121,17 @@ window.__ModuleLoader__.load({
       'panel.pending': '待判',
       'panel.noReason': '未给理由',
       'panel.noEntries': '还没有存任何东西。',
+      'panel.consolidateShort': '整理',
+      'panel.refreshShort': '刷新',
+      'panel.filterAll': '全部',
+      'panel.edit': '编辑',
+      'panel.delete': '删除',
+      'panel.save': '保存',
+      'panel.cancel': '取消',
+      'panel.deleteConfirm': '删除这条记忆？',
+      'panel.status': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 候选',
+      'panel.statusConsolidated': '整理于 {time}',
+      'panel.truncatedShort': '已截断',
     }
 
     /** Minimal translator with {name} interpolation over the slot's locale texts. */
@@ -146,19 +168,29 @@ window.__ModuleLoader__.load({
         '.icex-memory-candidate { padding: 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); margin-bottom: 8px; }',
         '.icex-memory-kind { color: var(--dsw-alias-label-tertiary); font-size: 11px; margin-right: 6px; }',
         '.icex-memory-verdict { color: var(--dsw-alias-state-business-primary); font-size: 12px; margin: 4px 0; }',
-        '.icex-mem { box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; padding: 16px; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 20px; min-width: 0; }',
-        '.icex-mem-head { display: flex; flex-direction: column; gap: 2px; }',
-        '.icex-mem-title { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; }',
-        '.icex-mem-sub { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }',
-        '.icex-mem-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }',
-        '.icex-mem-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-layer-1); }',
-        '.icex-mem-stat b { font-size: 14px; font-weight: 500; line-height: 20px; }',
-        '.icex-mem-stat span { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+        '.icex-mem { box-sizing: border-box; display: flex; flex-direction: column; height: 100%; min-height: 0; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 20px; }',
+        '.icex-mem-top { flex: none; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 8px; }',
+        '.icex-mem-head { display: flex; align-items: center; gap: 8px; }',
+        '.icex-mem-title { margin: 0; font-size: 13px; font-weight: 500; line-height: 20px; }',
+        '.icex-mem-count { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+        '.icex-mem-spacer { flex: 1; }',
+        '.icex-mem-text-btn { height: 20px; padding: 0 4px; border: 0; border-radius: var(--dsw-radius-sm, 4px); background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }',
+        '.icex-mem-text-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); }',
+        '.icex-mem-text-btn:disabled { opacity: 0.5; cursor: default; }',
+        '.icex-mem-filters { display: flex; flex-wrap: wrap; gap: 6px; }',
+        '.icex-mem-filter { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 1px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 12%, transparent); color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; line-height: 1; cursor: pointer; }',
+        '.icex-mem-filter:hover { background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 20%, transparent); }',
+        '.icex-mem-filter[data-active="true"] { border-color: var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); }',
+        '.icex-mem-filter-count { color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
+        '.icex-mem-filter[data-kind="pref"] { color: var(--dsw-alias-state-business-primary); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); }',
+        '.icex-mem-filter[data-kind="decision"] { color: #a78bfa; background: color-mix(in srgb, #a78bfa 14%, transparent); }',
+        '.icex-mem-filter[data-kind="pitfall"] { color: var(--dsw-alias-state-error-primary); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); }',
+        '.icex-mem-filter[data-kind="tool"] { color: #34d399; background: color-mix(in srgb, #34d399 14%, transparent); }',
+        '.icex-mem-filter[data-kind="project"] { color: #fbbf24; background: color-mix(in srgb, #fbbf24 14%, transparent); }',
+        '.icex-mem-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 16px; }',
         '.icex-mem-section { display: flex; flex-direction: column; gap: 8px; }',
         '.icex-mem-section-head { display: flex; align-items: center; gap: 8px; }',
-        '.icex-mem-section-title { margin: 0; font-size: 13px; font-weight: 500; line-height: 20px; }',
-        '.icex-mem-count { color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
-        '.icex-mem-spacer { flex: 1; }',
+        '.icex-mem-section-title { margin: 0; font-size: 12px; font-weight: 500; line-height: 18px; color: var(--dsw-alias-label-secondary); }',
         '.icex-mem-btn { height: 24px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; cursor: pointer; }',
         '.icex-mem-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-1); }',
         '.icex-mem-btn:disabled { opacity: 0.5; cursor: default; }',
@@ -176,23 +208,36 @@ window.__ModuleLoader__.load({
         '.icex-mem-reason { overflow-wrap: anywhere; }',
         '.icex-mem-actions { display: flex; gap: 8px; }',
         '.icex-mem-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }',
-        '.icex-mem-row { display: flex; align-items: baseline; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); border-bottom: 0.5px solid var(--dsw-alias-border-l1); }',
+        '.icex-mem-row { position: relative; display: flex; align-items: baseline; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); }',
         '.icex-mem-row:hover { background: var(--dsw-alias-bg-layer-1); }',
-        '.icex-mem-row:last-child { border-bottom: 0; }',
-        '.icex-mem-kind { flex: none; height: 18px; padding: 0 6px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 18px; letter-spacing: 0.02em; }',
-        '.icex-mem-row-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }',
+        '.icex-mem-row + .icex-mem-row { border-top: 0.5px solid var(--dsw-alias-border-l1); }',
+        '.icex-mem-row-edit { flex-direction: column; align-items: stretch; gap: 6px; }',
+        '.icex-mem-kind { flex: none; height: 18px; padding: 0 6px; border-radius: 6px; font-size: 10px; line-height: 18px; letter-spacing: 0.02em; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-kind[data-kind="pref"] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); }',
+        '.icex-mem-kind[data-kind="decision"] { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }',
+        '.icex-mem-kind[data-kind="pitfall"] { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent); color: var(--dsw-alias-state-error-primary); }',
+        '.icex-mem-kind[data-kind="tool"] { background: color-mix(in srgb, #34d399 18%, transparent); color: #34d399; }',
+        '.icex-mem-kind[data-kind="project"] { background: color-mix(in srgb, #fbbf24 18%, transparent); color: #fbbf24; }',
+        '.icex-mem-row-text { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-right: 8px; }',
         '.icex-mem-row-date { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+        '.icex-mem-row-actions { position: absolute; right: 2px; top: 2px; display: flex; gap: 2px; padding: 2px; border-radius: var(--dsw-radius-sm, 4px); background: var(--dsw-alias-bg-layer-1); opacity: 0; pointer-events: none; transition: opacity 120ms ease; }',
+        '.icex-mem-row:hover .icex-mem-row-actions, .icex-mem-row:focus-within .icex-mem-row-actions { opacity: 1; pointer-events: auto; }',
+        '.icex-mem-icon-btn { padding: 0 4px; border: 0; border-radius: var(--dsw-radius-sm, 4px); background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 11px; cursor: pointer; }',
+        '.icex-mem-icon-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.14)); color: var(--dsw-alias-label-primary); }',
+        '.icex-mem-icon-btn[data-action="delete"]:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); }',
+        '.icex-mem-edit { width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; line-height: 18px; }',
         '.icex-mem-timeline { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }',
         '.icex-mem-event { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 12px; line-height: 18px; }',
         '.icex-mem-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary); align-self: center; }',
         '.icex-mem-dot[data-kind="pitfall"] { background: var(--dsw-alias-state-error-primary); }',
-        '.icex-mem-dot[data-kind="decision"] { background: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-dot[data-kind="decision"] { background: #a78bfa; }',
+        '.icex-mem-dot[data-kind="tool"] { background: #34d399; }',
         '.icex-mem-event-text { color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }',
         '.icex-mem-event-date { color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
         '.icex-mem-empty { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }',
-        '.icex-mem-note { margin: 0; font-size: 12px; line-height: 18px; }',
-        '.icex-mem-note-warn { color: var(--dsw-alias-label-secondary); }',
-        '.icex-mem-note-error { color: var(--dsw-alias-state-error-primary); }',
+        '.icex-mem-status { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-top: 0.5px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+        '.icex-mem-status-warn { color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-status-error { color: var(--dsw-alias-state-error-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }',
         '.icex-mem-loading { padding: 24px 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; text-align: center; }',
       ].join('\n')
       document.head.appendChild(style)
@@ -362,7 +407,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'icex-memory-hint' }, t('settings.hint')))
     }
 
-    /** Right-sidebar panel: stats, candidate inbox, entries, and recent activity. */
+    /** Right-sidebar panel: filters, candidate inbox, editable entries, and a compact status bar. */
     function MemoryPanel(props) {
       const t = translator(props.t)
       const dataState = useState(props.initial ?? null)
@@ -371,6 +416,10 @@ window.__ModuleLoader__.load({
       const error = errorState[0]
       const busyState = useState(false)
       const busy = busyState[0]
+      const filterState = useState('all')
+      const filter = filterState[0]
+      const editState = useState(null)
+      const editing = editState[0]
 
       async function load() {
         busyState[1](true)
@@ -419,95 +468,163 @@ window.__ModuleLoader__.load({
       const stats = data.stats ?? {}
       const candidates = Array.isArray(data.candidates) ? data.candidates : []
       const entries = Array.isArray(data.global) ? data.global : []
-      const activity = entries.slice(-6).reverse()
+      const kinds = ['all'].concat(Array.from(new Set(entries.map((entry) => entry.kind))))
+      const visible = filter === 'all' ? entries : entries.filter((entry) => entry.kind === filter)
+      const activity = entries.slice(-4).reverse()
       const total = (stats.globalEntries ?? 0) + (stats.projectEntries ?? 0)
 
-      function button(label, onClick, tone) {
+      function chip(label, value, count) {
         return h('button', {
+          key: value,
           type: 'button',
-          className: tone === 'quiet' ? 'icex-mem-btn icex-mem-btn-quiet' : 'icex-mem-btn',
-          disabled: busy,
-          onClick: onClick,
-        }, label)
+          className: 'icex-mem-filter',
+          'data-active': filter === value ? 'true' : 'false',
+          'data-kind': value === 'all' ? undefined : value,
+          onClick: function () { filterState[1](value) },
+        }, label, count === undefined ? null : h('span', { className: 'icex-mem-filter-count' }, String(count)))
+      }
+
+      function entryRow(entry) {
+        if (editing !== null && editing.id === entry.id) {
+          return h('li', { key: entry.id, className: 'icex-mem-row icex-mem-row-edit', 'data-entry': entry.id },
+            h('textarea', {
+              className: 'icex-mem-edit',
+              value: editing.text,
+              rows: 2,
+              onChange: function (event) { editState[1]({ id: entry.id, text: event.target.value }) },
+            }),
+            h('div', { className: 'icex-mem-actions' },
+              h('button', {
+                type: 'button',
+                className: 'icex-mem-btn icex-mem-btn-primary',
+                disabled: busy,
+                onClick: function () {
+                  const text = editing.text.trim()
+                  editState[1](null)
+                  if (text !== '') void act({ action: 'update', id: entry.id, text: text })
+                },
+              }, t('panel.save')),
+              h('button', {
+                type: 'button',
+                className: 'icex-mem-btn icex-mem-btn-quiet',
+                disabled: busy,
+                onClick: function () { editState[1](null) },
+              }, t('panel.cancel'))))
+        }
+        return h('li', { key: entry.id, className: 'icex-mem-row', 'data-entry': entry.id },
+          h('span', { className: 'icex-mem-kind', 'data-kind': entry.kind }, entry.kind),
+          h('span', { className: 'icex-mem-row-text' }, entry.text),
+          h('span', { className: 'icex-mem-row-date' }, String(entry.at ?? '').slice(5)),
+          h('span', { className: 'icex-mem-row-actions' },
+            h('button', {
+              type: 'button',
+              className: 'icex-mem-icon-btn',
+              title: t('panel.edit'),
+              'data-action': 'edit',
+              disabled: busy,
+              onClick: function () { editState[1]({ id: entry.id, text: entry.text }) },
+            }, t('panel.edit')),
+            h('button', {
+              type: 'button',
+              className: 'icex-mem-icon-btn',
+              title: t('panel.delete'),
+              'data-action': 'delete',
+              disabled: busy,
+              onClick: function () {
+                if (typeof window === 'undefined' || window.confirm(t('panel.deleteConfirm')) !== true) return
+                void act({ action: 'delete', id: entry.id })
+              },
+            }, t('panel.delete'))))
       }
 
       return h('div', { className: 'icex-mem' },
-        h('header', { className: 'icex-mem-head', 'data-section': 'header' },
-          h('h2', { className: 'icex-mem-title' }, t('panel.title')),
-          h('p', { className: 'icex-mem-sub' }, t('panel.description'))),
-
-        h('div', { className: 'icex-mem-stats', 'data-section': 'stats' },
-          h('div', { className: 'icex-mem-stat' }, h('b', null, String(total)), h('span', null, t('panel.statEntries'))),
-          h('div', { className: 'icex-mem-stat' }, h('b', null, String(stats.digestChars ?? 0)), h('span', null, t('panel.statChars'))),
-          h('div', { className: 'icex-mem-stat' }, h('b', null, String(stats.candidates ?? 0)), h('span', null, t('panel.statCandidates'))),
-          h('div', { className: 'icex-mem-stat' }, h('b', null, stats.lastConsolidatedAt === null || stats.lastConsolidatedAt === undefined
-            ? '—'
-            : String(stats.lastConsolidatedAt).replace('T', ' ').slice(5, 16)), h('span', null, t('panel.statConsolidated')))),
-        stats.truncated === true ? h('p', { className: 'icex-mem-note icex-mem-note-warn' }, t('panel.truncated')) : null,
-
-        h('section', { className: 'icex-mem-section', 'data-section': 'candidates' },
-          h('div', { className: 'icex-mem-section-head' },
-            h('h3', { className: 'icex-mem-section-title' }, t('panel.candidates')),
-            h('span', { className: 'icex-mem-count' }, String(candidates.length)),
+        h('div', { className: 'icex-mem-top' },
+          h('div', { className: 'icex-mem-head', 'data-section': 'header' },
+            h('h2', { className: 'icex-mem-title' }, t('panel.title')),
+            h('span', { className: 'icex-mem-count' }, String(total)),
             h('span', { className: 'icex-mem-spacer' }),
-            button(t('panel.consolidate'), function () { void act({ action: 'consolidate' }) }, 'quiet'),
-            button(t('panel.refresh'), function () { void load() }, 'quiet')),
-          candidates.length === 0
-            ? h('p', { className: 'icex-mem-empty' }, t('panel.noCandidates'))
-            : h('ul', { className: 'icex-mem-cards' }, candidates.map(function (candidate) {
-              const decision = candidate.decision
-              return h('li', { key: candidate.id, className: 'icex-mem-card', 'data-candidate': candidate.id },
-                h('p', { className: 'icex-mem-card-text' }, candidate.text),
-                h('div', { className: 'icex-mem-meta' },
-                  h('span', { className: 'icex-mem-src', title: candidate.src }, candidate.src),
-                  h('span', null, String(candidate.at ?? '').slice(0, 10))),
-                decision === null || decision === undefined
-                  ? h('div', { className: 'icex-mem-verdict icex-mem-verdict-pending' }, h('span', { className: 'icex-mem-pill' }, t('panel.pending')), t('panel.undecided'))
-                  : h('div', { className: 'icex-mem-verdict', 'data-tone': decision.action },
-                    h('span', { className: 'icex-mem-pill', 'data-tone': decision.action }, decision.action === 'promote' ? t('panel.verdictPromote') : t('panel.verdictDismiss')),
-                    h('span', { className: 'icex-mem-reason' }, decision.reason === '' ? t('panel.noReason') : decision.reason)),
-                h('div', { className: 'icex-mem-actions' },
-                  h('button', {
-                    type: 'button',
-                    className: 'icex-mem-btn icex-mem-btn-primary',
-                    'data-action': 'promote',
-                    disabled: busy,
-                    onClick: function () { void act({ action: 'promote', id: candidate.id }) },
-                  }, t('panel.promote')),
-                  h('button', {
-                    type: 'button',
-                    className: 'icex-mem-btn icex-mem-btn-quiet',
-                    'data-action': 'dismiss',
-                    disabled: busy,
-                    onClick: function () { void act({ action: 'dismiss', id: candidate.id }) },
-                  }, t('panel.dismiss'))))
+            h('button', {
+              type: 'button',
+              className: 'icex-mem-text-btn',
+              disabled: busy,
+              onClick: function () { void act({ action: 'consolidate' }) },
+            }, t('panel.consolidateShort')),
+            h('button', {
+              type: 'button',
+              className: 'icex-mem-text-btn',
+              disabled: busy,
+              onClick: function () { void load() },
+            }, t('panel.refreshShort'))),
+          h('div', { className: 'icex-mem-filters', 'data-section': 'filters' },
+            kinds.map(function (kind) {
+              return chip(kind === 'all' ? t('panel.filterAll') : kind, kind, kind === 'all' ? entries.length : entries.filter((entry) => entry.kind === kind).length)
             }))),
 
-        h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
-          h('div', { className: 'icex-mem-section-head' },
-            h('h3', { className: 'icex-mem-section-title' }, t('panel.entries')),
-            h('span', { className: 'icex-mem-count' }, String(entries.length))),
-          entries.length === 0
-            ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
-            : h('ul', { className: 'icex-mem-list' }, entries.slice().reverse().map(function (entry) {
-              return h('li', { key: entry.id, className: 'icex-mem-row', 'data-entry': entry.id },
-                h('span', { className: 'icex-mem-kind', 'data-kind': entry.kind }, entry.kind),
-                h('span', { className: 'icex-mem-row-text' }, entry.text),
-                h('span', { className: 'icex-mem-row-date' }, String(entry.at ?? '').slice(5)))
-            }))),
+        h('div', { className: 'icex-mem-body', 'data-section': 'body' },
+          h('section', { className: 'icex-mem-section', 'data-section': 'candidates' },
+            h('div', { className: 'icex-mem-section-head' },
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.candidates')),
+              h('span', { className: 'icex-mem-count' }, String(candidates.length))),
+            candidates.length === 0
+              ? h('p', { className: 'icex-mem-empty' }, t('panel.noCandidates'))
+              : h('ul', { className: 'icex-mem-cards' }, candidates.map(function (candidate) {
+                const decision = candidate.decision
+                return h('li', { key: candidate.id, className: 'icex-mem-card', 'data-candidate': candidate.id },
+                  h('p', { className: 'icex-mem-card-text' }, candidate.text),
+                  h('div', { className: 'icex-mem-meta' },
+                    h('span', { className: 'icex-mem-src', title: candidate.src }, candidate.src),
+                    h('span', null, String(candidate.at ?? '').slice(0, 10))),
+                  decision === null || decision === undefined
+                    ? h('div', { className: 'icex-mem-verdict' }, h('span', { className: 'icex-mem-pill' }, t('panel.pending')), t('panel.undecided'))
+                    : h('div', { className: 'icex-mem-verdict' },
+                      h('span', { className: 'icex-mem-pill', 'data-tone': decision.action }, decision.action === 'promote' ? t('panel.verdictPromote') : t('panel.verdictDismiss')),
+                      h('span', { className: 'icex-mem-reason' }, decision.reason === '' ? t('panel.noReason') : decision.reason)),
+                  h('div', { className: 'icex-mem-actions' },
+                    h('button', {
+                      type: 'button',
+                      className: 'icex-mem-btn icex-mem-btn-primary',
+                      'data-action': 'promote',
+                      disabled: busy,
+                      onClick: function () { void act({ action: 'promote', id: candidate.id }) },
+                    }, t('panel.promote')),
+                    h('button', {
+                      type: 'button',
+                      className: 'icex-mem-btn icex-mem-btn-quiet',
+                      'data-action': 'dismiss',
+                      disabled: busy,
+                      onClick: function () { void act({ action: 'dismiss', id: candidate.id }) },
+                    }, t('panel.dismiss'))))
+              }))),
+          h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
+            h('div', { className: 'icex-mem-section-head' },
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.entries')),
+              h('span', { className: 'icex-mem-count' }, String(visible.length))),
+            visible.length === 0
+              ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
+              : h('ul', { className: 'icex-mem-list' }, visible.slice().reverse().map(entryRow))),
+          h('section', { className: 'icex-mem-section', 'data-section': 'activity' },
+            h('div', { className: 'icex-mem-section-head' },
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.activity')),
+              h('span', { className: 'icex-mem-count' }, String(activity.length))),
+            h('ol', { className: 'icex-mem-timeline' }, activity.map(function (entry) {
+              return h('li', { key: 'a-' + entry.id, className: 'icex-mem-event' },
+                h('span', { className: 'icex-mem-dot', 'data-kind': entry.kind }),
+                h('span', { className: 'icex-mem-event-text' }, entry.text),
+                h('span', { className: 'icex-mem-event-date' }, String(entry.at ?? '').slice(5)))
+            })))),
 
-        h('section', { className: 'icex-mem-section', 'data-section': 'activity' },
-          h('div', { className: 'icex-mem-section-head' },
-            h('h3', { className: 'icex-mem-section-title' }, t('panel.activity')),
-            h('span', { className: 'icex-mem-count' }, String(activity.length))),
-          h('ol', { className: 'icex-mem-timeline' }, activity.map(function (entry) {
-            return h('li', { key: 'a-' + entry.id, className: 'icex-mem-event' },
-              h('span', { className: 'icex-mem-dot', 'data-kind': entry.kind }),
-              h('span', { className: 'icex-mem-event-text' }, entry.text),
-              h('span', { className: 'icex-mem-event-date' }, String(entry.at ?? '').slice(5)))
-          }))),
-
-        error === null ? null : h('p', { className: 'icex-mem-note icex-mem-note-error', role: 'alert' }, error))
+        h('footer', { className: 'icex-mem-status', 'data-section': 'status' },
+          h('span', null, t('panel.status', {
+            entries: total,
+            chars: stats.digestChars ?? 0,
+            candidates: stats.candidates ?? 0,
+          })),
+          h('span', { className: 'icex-mem-spacer' }),
+          h('span', null, stats.lastConsolidatedAt === null || stats.lastConsolidatedAt === undefined
+            ? ''
+            : t('panel.statusConsolidated', { time: String(stats.lastConsolidatedAt).replace('T', ' ').slice(5, 16) })),
+          stats.truncated === true ? h('span', { className: 'icex-mem-status-warn' }, t('panel.truncatedShort')) : null,
+          error === null ? null : h('span', { className: 'icex-mem-status-error', role: 'alert' }, error)))
     }
 
     function apply(ctx) {

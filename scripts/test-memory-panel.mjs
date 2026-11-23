@@ -88,6 +88,17 @@ const texts = {
   'panel.pending': '待判',
   'panel.noReason': '未给理由',
   'panel.noEntries': '还没有存任何东西。',
+  'panel.consolidateShort': '整理',
+  'panel.refreshShort': '刷新',
+  'panel.filterAll': '全部',
+  'panel.edit': '编辑',
+  'panel.delete': '删除',
+  'panel.save': '保存',
+  'panel.cancel': '取消',
+  'panel.deleteConfirm': '删除这条记忆？',
+  'panel.status': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 候选',
+  'panel.statusConsolidated': '整理于 {time}',
+  'panel.truncatedShort': '已截断',
   'panel.candidates': '候选',
   'panel.entries': '已存条目',
   'panel.activity': '最近活动',
@@ -120,9 +131,12 @@ const payload = {
 
 const tree = panelComponent({ initial: payload, t: texts })
 const flat = JSON.stringify(tree)
-check('renders stats', flat.includes('"1"') && flat.includes('"120"') && flat.includes('"2"') && flat.includes('条目'))
-check('renders the panel header', flat.includes('记忆') && flat.includes('icex-mem-title'))
-check('uses the DSH card structure', flat.includes('icex-mem-card') && flat.includes('icex-mem-stat') && flat.includes('icex-mem-kind'))
+check('renders the header', flat.includes('记忆') && flat.includes('icex-mem-title'))
+check('renders quick filters', flat.includes('icex-mem-filters') && flat.includes('data-kind\":\"pref') && flat.includes('全部'))
+check('renders a scrolling body', flat.includes('icex-mem-body'))
+check('puts stats in the status bar', flat.includes('icex-mem-status') && flat.includes('1 条 · 摘要 120 字符 · 2 候选'))
+check('uses coloured kind chips', flat.includes('icex-mem-kind') && flat.includes('data-kind'))
+check('offers edit and delete', flat.includes('data-action\":\"edit') && flat.includes('data-action\":\"delete'))
 check('renders both candidates', flat.includes('以后所有回答都要先给结论') && flat.includes('不要用表格'))
 check('shows the model verdict', flat.includes('用户明确要求') && flat.includes('icex-mem-pill'))
 check('shows undecided state', flat.includes('模型还没判断这条。') && flat.includes('待判'))

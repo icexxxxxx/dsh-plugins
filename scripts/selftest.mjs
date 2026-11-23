@@ -89,6 +89,20 @@ const promotedPanel = await m.handlePanelRequest(new Request('http://127.0.0.1/a
 }), undefined)
 check('panel promotes a candidate', (await promotedPanel.json()).ok === true && m.readPending().length === 0)
 
+// panel editing of stored entries
+const editable = m.makeEntry('面板里可编辑的条目', 'pref', 'selftest@12')
+m.appendEntry(store, editable)
+const updated = await m.handlePanelRequest(new Request('http://127.0.0.1/api/icex-memory/panel', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ action: 'update', id: editable.id, text: '面板里可编辑的条目（已改）' }),
+}), undefined)
+check('panel updates an entry', (await updated.json()).ok === true && readFileSync(store, 'utf8').includes('（已改）'))
+const removed = await m.handlePanelRequest(new Request('http://127.0.0.1/api/icex-memory/panel', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ action: 'delete', id: editable.id }),
+}), undefined)
+check('panel deletes an entry', (await removed.json()).ok === true && !readFileSync(store, 'utf8').includes('（已改）'))
+
 // settings-page editor: route registration, read, write, guards
 const registeredRoutes = []
 const fakeConnection = {
