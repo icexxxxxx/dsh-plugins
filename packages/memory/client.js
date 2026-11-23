@@ -82,6 +82,9 @@ window.__ModuleLoader__.load({
       'kind.pitfall': 'Pitfall',
       'kind.tool': 'Tool',
       'kind.project': 'Project',
+      'error.unknownAction': 'This action is not available yet. Restart the app to load the new host code.',
+      'error.entryNotFound': 'That entry no longer exists.',
+      'error.blankText': 'The text cannot be empty.',
     }
 
     const zh = {
@@ -150,10 +153,14 @@ window.__ModuleLoader__.load({
       'kind.pitfall': '坑',
       'kind.tool': '工具',
       'kind.project': '项目',
+      'error.unknownAction': '这个操作还不可用：重启 App 加载新的 host 代码。',
+      'error.entryNotFound': '这条记忆已经不在了。',
+      'error.blankText': '内容不能为空。',
     }
 
     /** Minimal translator with {name} interpolation over the slot's locale texts. */
     function translator(source) {
+      if (typeof source === 'function') return source
       const table = source !== null && typeof source === 'object' ? source : en
       return function t(key, values) {
         const template = typeof table[key] === 'string' ? table[key] : key
@@ -229,7 +236,8 @@ window.__ModuleLoader__.load({
         '.icex-mem-row { position: relative; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); }',
         '.icex-mem-row:hover { background: var(--dsw-alias-bg-layer-1); }',
         '.icex-mem-row + .icex-mem-row { border-top: 0.5px solid var(--dsw-alias-border-l1); }',
-        '.icex-mem-row-edit { flex-direction: column; align-items: stretch; gap: 6px; }',
+        '.icex-mem-row-edit { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }',
+        '.icex-mem-row-edit .icex-mem-actions { justify-content: flex-end; }',
         '.icex-mem-kind { box-sizing: border-box; width: 100%; height: 18px; padding: 0 4px; border-radius: 6px; font-size: 10px; line-height: 18px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); }',
         '.icex-mem-kind[data-kind="pref"] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); }',
         '.icex-mem-kind[data-kind="decision"] { background: color-mix(in srgb, #a78bfa 18%, transparent); color: #a78bfa; }',
@@ -243,7 +251,7 @@ window.__ModuleLoader__.load({
         '.icex-mem-icon-btn { padding: 0 4px; border: 0; border-radius: var(--dsw-radius-sm, 4px); background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 11px; cursor: pointer; }',
         '.icex-mem-icon-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.14)); color: var(--dsw-alias-label-primary); }',
         '.icex-mem-icon-btn[data-action="delete"]:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); }',
-        '.icex-mem-edit { width: 100%; box-sizing: border-box; resize: vertical; padding: 6px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; line-height: 18px; }',
+        '.icex-mem-edit { display: block; width: 100%; min-height: 64px; box-sizing: border-box; resize: vertical; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; line-height: 18px; }',
         '.icex-mem-timeline { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }',
         '.icex-mem-event { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 12px; line-height: 18px; }',
         '.icex-mem-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary); align-self: center; }',
@@ -451,10 +459,17 @@ window.__ModuleLoader__.load({
           if (body.ok !== true) throw new Error(body.error ?? String(response.status))
           dataState[1](body)
         } catch (failure) {
-          errorState[1](t('panel.failed', { message: String(failure.message ?? failure) }))
+          errorState[1](t('panel.failed', { message: explain(failure.message) }))
         } finally {
           busyState[1](false)
         }
+      }
+
+      function explain(message) {
+        const text = String(message ?? '')
+        if (text.includes('unknown action')) return t('error.unknownAction')
+        if (text.includes('entry not found')) return t('error.entryNotFound')
+        return text
       }
 
       async function act(payload) {
@@ -473,7 +488,7 @@ window.__ModuleLoader__.load({
           return true
         } catch (failure) {
           busyState[1](false)
-          errorState[1](t('panel.failed', { message: String(failure.message ?? failure) }))
+          errorState[1](t('panel.failed', { message: explain(failure.message) }))
           return false
         }
       }
@@ -628,13 +643,6 @@ window.__ModuleLoader__.load({
                       onClick: function () { void act({ action: 'dismiss', id: candidate.id }) },
                     }, t('panel.dismiss'))))
               }))),
-          h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
-            h('div', { className: 'icex-mem-section-head' },
-              h('h3', { className: 'icex-mem-section-title' }, t('panel.globalEntries')),
-              h('span', { className: 'icex-mem-count' }, String(visibleGlobal.length))),
-            visibleGlobal.length === 0
-              ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
-              : h('ul', { className: 'icex-mem-list' }, visibleGlobal.slice().reverse().map(entryRow))),
           data.project !== undefined && data.project.path !== null && data.project.path !== undefined
             ? h('section', { className: 'icex-mem-section', 'data-section': 'project' },
               h('div', { className: 'icex-mem-section-head' },
@@ -647,6 +655,13 @@ window.__ModuleLoader__.load({
             : h('section', { className: 'icex-mem-section', 'data-section': 'project-missing' },
               h('h3', { className: 'icex-mem-section-title' }, t('panel.projectEntries')),
               h('p', { className: 'icex-mem-empty' }, t('panel.noSessionCwd'))),
+          h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
+            h('div', { className: 'icex-mem-section-head' },
+              h('h3', { className: 'icex-mem-section-title' }, t('panel.globalEntries')),
+              h('span', { className: 'icex-mem-count' }, String(visibleGlobal.length))),
+            visibleGlobal.length === 0
+              ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
+              : h('ul', { className: 'icex-mem-list' }, visibleGlobal.slice().reverse().map(entryRow))),
           h('section', { className: 'icex-mem-section', 'data-section': 'activity' },
             h('div', { className: 'icex-mem-section-head' },
               h('h3', { className: 'icex-mem-section-title' }, t('panel.activity')),

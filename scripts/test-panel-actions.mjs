@@ -77,6 +77,11 @@ function walk(node, pred, out = []) {
   return out
 }
 const byAction = (action) => walk(tree, (n) => n.props?.['data-action'] === action)[0]
+const entryNode = (id) => walk(tree, (n) => n.props?.['data-entry'] === id)[0]
+const actionIn = (id, action) => {
+  const node = entryNode(id)
+  return node === undefined ? undefined : walk(node, (n) => n.props?.['data-action'] === action)[0]
+}
 const buttonByLabel = (label) => walk(tree, (n) => n.type === 'button' && JSON.stringify(n.props?.children ?? '').includes(label))[0]
 const all = () => JSON.stringify(tree)
 
@@ -84,7 +89,7 @@ check('shows global and project entries', all().includes('全局条目') && all(
 check('shows a project path', all().includes('MEMORY.md'))
 check('uses chinese kind labels', all().includes('偏好') && all().includes('项目'))
 
-const editBtn = byAction('edit')
+const editBtn = actionIn('g1', 'edit')
 check('edit button exists', editBtn !== undefined)
 editBtn.props.onClick()
 const area = walk(tree, (n) => n.type === 'textarea')[0]
@@ -109,7 +114,7 @@ check('update posts id, text and scope', updatePost !== undefined && updatePost.
 check('successful save closes the editor', walk(tree, (n) => n.type === 'textarea').length === 0)
 
 // delete with confirmation
-const deleteBtn = byAction('delete')
+const deleteBtn = actionIn('g1', 'delete')
 check('delete button exists', deleteBtn !== undefined)
 deleteBtn.props.onClick()
 await new Promise((r) => setTimeout(r, 20))
