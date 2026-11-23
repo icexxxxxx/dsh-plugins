@@ -96,15 +96,43 @@ async function handleDeleteSession(request, ctx) {
   const id = typeof body?.id === 'string' ? body.id.trim() : ''
   if (id === '') return jsonResponse({ ok: false, error: 'id is required' }, 400)
 
+  let sessions
   let live = false
   try {
-    const sessions = ctx.get('sessions')
+    sessions = ctx.get('sessions')
     if (sessions !== undefined && typeof sessions.get === 'function') live = sessions.get(id) !== undefined
   } catch (error) {
     // Without the registry, fall through to the on-disk check only.
   }
+  // A running session is stopped and archived first: the workspace registry
+  // cancels its turn, subagents, jobs and schedules through the same
+  // `stopActivity` path the session menu's archive uses. Only then is it safe
+  // to move the log out from under the writer. The archive also drops the row
+  // and clears the main view, so the browser lands on the new-session page.
   if (live) {
-    return jsonResponse({ ok: false, error: 'session is currently open; switch to another session first', code: 'live' }, 409)
+    let workspace
+    try {
+      workspace = ctx.get('workspaceRegistry')
+    } catch (error) {
+      workspace = undefined
+    }
+    if (workspace === undefined || typeof workspace.archiveSession !== 'function') {
+      return jsonResponse({ ok: false, error: 'session is running and cannot be stopped by this profile', code: 'live' }, 409)
+    }
+    try {
+      await workspace.archiveSession(id, { stopActivity: true })
+    } catch (error) {
+      console.warn('[icex-dsh-fixer] could not stop session ' + id + ': ' + String(error?.message ?? error))
+      return jsonResponse({ ok: false, error: 'session is running and could not be stopped', code: 'live' }, 409)
+    }
+    // Flush buffered events so the trash copy carries everything written so
+    // far; a failure here is logged but does not block the deletion.
+    try {
+      const session = sessions.get(id)
+      if (session !== undefined && typeof sessions.flush === 'function') await sessions.flush(session)
+    } catch (error) {
+      console.warn('[icex-dsh-fixer] could not flush session ' + id + ': ' + String(error?.message ?? error))
+    }
   }
 
   const dirs = sessionDirectories(id)
@@ -401,6 +429,7 @@ function registerBareModeRoute(ctx) {
 
 apply.__test = {
   BARE_PROTECTED,
+  handleDeleteSession,
   bareTargets,
   bareStatus,
   enterBareMode,

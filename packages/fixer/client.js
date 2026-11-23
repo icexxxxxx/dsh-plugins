@@ -1022,9 +1022,9 @@ window.__ModuleLoader__.load({
       'rail.fallback': 'Turn {turn}',
       'menu.deleteSession': 'Delete session',
       'menu.deleting': 'Deleting…',
-      'menu.deleteConfirm': 'Delete this session? Its log moves to the trash folder.',
+      'menu.deleteConfirm': 'Delete this session? A running session is stopped first; its log moves to the trash folder, and the current view returns to a new Session.',
       'menu.deleteFailed': 'Delete failed: {message}',
-      'menu.deleteLive': 'This session is open. Switch to another session, then delete it.',
+      'menu.deleteLive': 'This session is running and could not be stopped. Try again in a moment.',
     }
 
     const zh = {
@@ -1068,9 +1068,9 @@ window.__ModuleLoader__.load({
       'rail.input': '第 {index} 条输入',
       'menu.deleteSession': '删除会话',
       'menu.deleting': '删除中…',
-      'menu.deleteConfirm': '删除这个会话？日志会移到回收站目录，可以再捞回来。',
+      'menu.deleteConfirm': '删除这个会话？正在运行的会话会先被停止；日志会移到回收站目录，当前视图会回到新会话。',
       'menu.deleteFailed': '删除失败：{message}',
-      'menu.deleteLive': '这个会话正开着。先切到别的会话，再回来删除。',
+      'menu.deleteLive': '这个会话还在运行，没能停下来；稍后再试一次。',
       'rail.fallback': '第 {turn} 轮',
     }
 

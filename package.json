@@ -11,6 +11,6 @@
     "check": "node --check packages/fixer/client.js && node --check packages/fixer/index.js && node --check packages/memory/index.js",
     "selftest": "node scripts/selftest.mjs",
     "release": "node scripts/release.mjs",
-    "test": "node scripts/selftest.mjs && node scripts/test-fixer-menu.mjs && node scripts/test-memory-panel.mjs && node scripts/test-panel-actions.mjs"
+    "test": "node scripts/selftest.mjs && node scripts/test-fixer-menu.mjs && node scripts/test-fixer-bare.mjs && node scripts/test-fixer-bare-ui.mjs && node scripts/test-fixer-delete.mjs && node scripts/test-memory-panel.mjs && node scripts/test-panel-actions.mjs"
   }
 }

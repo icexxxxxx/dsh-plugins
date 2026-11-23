@@ -92,6 +92,9 @@ async function main() {
   log('running self-test')
   execFileSync(process.execPath, [join(root, 'scripts/selftest.mjs')], { cwd: root, stdio: 'inherit' })
   execFileSync(process.execPath, [join(root, 'scripts/test-fixer-menu.mjs')], { cwd: root, stdio: 'inherit' })
+  execFileSync(process.execPath, [join(root, 'scripts/test-fixer-bare.mjs')], { cwd: root, stdio: 'inherit' })
+  execFileSync(process.execPath, [join(root, 'scripts/test-fixer-bare-ui.mjs')], { cwd: root, stdio: 'inherit' })
+  execFileSync(process.execPath, [join(root, 'scripts/test-fixer-delete.mjs')], { cwd: root, stdio: 'inherit' })
   execFileSync(process.execPath, [join(root, 'scripts/test-memory-panel.mjs')], { cwd: root, stdio: 'inherit' })
   execFileSync(process.execPath, [join(root, 'scripts/test-panel-actions.mjs')], { cwd: root, stdio: 'inherit' })
 
