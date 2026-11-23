@@ -58,10 +58,41 @@ m.appendEntry(store, promoted)
 m.dropMatchingCandidate(promoted.text)
 check('promotion drops a similar candidate', m.readPending().length === 0)
 
+// model verdicts: recorded, shown in the digest, auto-applied when unchallenged
+m.writePending([])
+const judged = m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@9')
+check('verdict is recorded', m.decideCandidate(judged.id, 'promote', '用户明确要求') === true)
+const judgedEntry = m.readPending().find((entry) => entry.id === judged.id)
+check('verdict keeps the reason', judgedEntry?.decision?.action === 'promote' && judgedEntry.decision.reason === '用户明确要求')
+check('digest shows the verdict', m.renderDigest('/tmp/selftest').includes('model suggests promote'))
+const fresh = m.applyDueDecisions(24)
+check('fresh verdict is not applied yet', fresh.promoted === 0 && m.readPending().length === 1)
+judgedEntry.decision.at = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
+m.writePending([judgedEntry])
+const due = m.applyDueDecisions(24)
+check('stale verdict is applied', due.promoted === 1 && m.readPending().length === 0)
+check('applied verdict wrote a fact', m.parseEntries(readFileSync(store, 'utf8')).some((entry) => entry.text.includes('以后所有回答都要先给结论')))
+
+// sidebar panel: payload and candidate actions
+m.writePending([])
+const panelCandidate = m.captureCandidate('以后回答都要先给结论', '/tmp/selftest', 'selftest@11')
+m.decideCandidate(panelCandidate.id, 'promote', '用户明确要求')
+const panel = await m.handlePanelRequest(new Request('http://127.0.0.1/api/icex-memory/panel'), undefined)
+const panelBody = await panel.json()
+check('panel lists candidates with verdicts', panel.ok === true && panelBody.candidates.length === 1 && panelBody.candidates[0].decision.action === 'promote')
+check('panel reports digest stats', typeof panelBody.stats.digestChars === 'number' && panelBody.stats.candidates === 1)
+
+const promotedPanel = await m.handlePanelRequest(new Request('http://127.0.0.1/api/icex-memory/panel', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ action: 'promote', id: panelCandidate.id }),
+}), undefined)
+check('panel promotes a candidate', (await promotedPanel.json()).ok === true && m.readPending().length === 0)
+
 // settings-page editor: route registration, read, write, guards
-let captured = null
+const registeredRoutes = []
 const fakeConnection = {
-  fetch: { register: (route) => { captured = route; return () => {} } },
+  fetch: { register: (route) => { registeredRoutes.push(route); return () => {} } },
 }
 const fakeCtx = {
   get: (key) => (key === 'connection' ? fakeConnection : undefined),
@@ -72,7 +103,8 @@ const fakeCtx = {
   logger: { info: () => {}, warn: () => {} },
 }
 m.apply(fakeCtx, {})
-check('editor route registered', captured !== null && captured.path === '/api/icex-memory' && captured.methods.includes('POST'))
+check('editor route registered', registeredRoutes.some((route) => route.path === '/api/icex-memory' && route.methods.includes('POST')))
+check('panel route registered', registeredRoutes.some((route) => route.path === '/api/icex-memory/panel' && route.methods.includes('GET')))
 
 const readBack = await m.handleEditorRequest(new Request('http://127.0.0.1/api/icex-memory?scope=global'))
 const readBody = await readBack.json()

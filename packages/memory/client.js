@@ -36,6 +36,24 @@ window.__ModuleLoader__.load({
       'settings.unsaved': 'Unsaved changes.',
       'settings.error': 'Failed: {message}',
       'settings.hint': 'Entries are injected at the start of the next session. Keep one fact per line, at most 200 characters.',
+      'panel.title': 'Memory',
+      'panel.description': 'What the model remembers, and what it is still deciding.',
+      'panel.stats': '{entries} entries · digest {chars} chars · {candidates} candidates',
+      'panel.truncated': 'truncated by the budget',
+      'panel.lastConsolidated': 'Last consolidated: {time}',
+      'panel.consolidate': 'Consolidate now',
+      'panel.candidates': 'Candidates',
+      'panel.noCandidates': 'Nothing waiting for review.',
+      'panel.modelSays': 'Model suggests: {action} — {reason}',
+      'panel.undecided': 'Model has not judged this yet.',
+      'panel.promote': 'Keep as memory',
+      'panel.dismiss': 'Dismiss',
+      'panel.entries': 'Entries',
+      'panel.activity': 'Recent activity',
+      'panel.verdictPromote': 'keep',
+      'panel.verdictDismiss': 'dismiss',
+      'panel.refresh': 'Refresh',
+      'panel.failed': 'Failed: {message}',
     }
 
     const zh = {
@@ -58,6 +76,24 @@ window.__ModuleLoader__.load({
       'settings.unsaved': '有未保存的修改。',
       'settings.error': '失败：{message}',
       'settings.hint': '记忆会在下一个会话开始时注入。一行一条事实，每条不超过 200 字。',
+      'panel.title': '记忆',
+      'panel.description': '模型记住了什么，以及它还在判断什么。',
+      'panel.stats': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 条候选',
+      'panel.truncated': '已被预算截断',
+      'panel.lastConsolidated': '上次整理：{time}',
+      'panel.consolidate': '立即整理',
+      'panel.candidates': '候选',
+      'panel.noCandidates': '没有待处理的候选。',
+      'panel.modelSays': '模型建议：{action} — {reason}',
+      'panel.undecided': '模型还没判断这条。',
+      'panel.promote': '转正',
+      'panel.dismiss': '丢弃',
+      'panel.entries': '已存条目',
+      'panel.activity': '最近活动',
+      'panel.verdictPromote': '转正',
+      'panel.verdictDismiss': '丢弃',
+      'panel.refresh': '刷新',
+      'panel.failed': '失败：{message}',
     }
 
     /** Minimal translator with {name} interpolation over the slot's locale texts. */
@@ -90,6 +126,10 @@ window.__ModuleLoader__.load({
         '.icex-memory-meta { color: var(--dsw-alias-label-secondary); font-size: 12px; }',
         '.icex-memory-hint { color: var(--dsw-alias-label-secondary); font-size: 12px; }',
         '.icex-memory-error { color: var(--dsw-alias-state-error-primary); font-size: 12px; }',
+        '.icex-memory h3 { margin: 12px 0 4px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary); }',
+        '.icex-memory-candidate { padding: 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); margin-bottom: 8px; }',
+        '.icex-memory-kind { color: var(--dsw-alias-label-tertiary); font-size: 11px; margin-right: 6px; }',
+        '.icex-memory-verdict { color: var(--dsw-alias-state-business-primary); font-size: 12px; margin: 4px 0; }',
       ].join('\n')
       document.head.appendChild(style)
       return function () {
@@ -97,7 +137,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function MemoryPanel(props) {
+    function SettingsPage(props) {
       const t = translator(props.t)
       const [scope, setScope] = useState('global')
       const [dir, setDir] = useState(function () {
@@ -258,7 +298,145 @@ window.__ModuleLoader__.load({
         h('div', { className: 'icex-memory-hint' }, t('settings.hint')))
     }
 
+    /** Right-sidebar panel: stats, candidate inbox, entries, and recent activity. */
+    function MemoryPanel(props) {
+      const t = translator(props.t)
+      const dataState = useState(props.initial ?? null)
+      const data = dataState[0]
+      const errorState = useState(null)
+      const error = errorState[0]
+      const busyState = useState(false)
+      const busy = busyState[0]
+
+      async function load() {
+        busyState[1](true)
+        errorState[1](null)
+        try {
+          const response = await fetch('/api/icex-memory/panel', { credentials: 'same-origin' })
+          const body = await response.json()
+          if (body.ok !== true) throw new Error(body.error ?? String(response.status))
+          dataState[1](body)
+        } catch (failure) {
+          errorState[1](t('panel.failed', { message: String(failure.message ?? failure) }))
+        } finally {
+          busyState[1](false)
+        }
+      }
+
+      async function act(payload) {
+        busyState[1](true)
+        errorState[1](null)
+        try {
+          const response = await fetch('/api/icex-memory/panel', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          const body = await response.json()
+          if (body.ok !== true) throw new Error(body.error ?? String(response.status))
+          await load()
+        } catch (failure) {
+          busyState[1](false)
+          errorState[1](t('panel.failed', { message: String(failure.message ?? failure) }))
+        }
+      }
+
+      useEffect(function () {
+        if (props.initial === undefined) void load()
+      }, [])
+
+      if (props.view === 'summary') return null
+      if (data === null) return h('div', { className: 'icex-memory', 'data-section': 'loading' }, t('settings.loading'))
+
+      const stats = data.stats ?? {}
+      const candidates = Array.isArray(data.candidates) ? data.candidates : []
+      const entries = Array.isArray(data.global) ? data.global : []
+      const activity = entries.slice().reverse().slice(0, 6)
+
+      return h('div', { className: 'icex-memory' },
+        h('section', { className: 'icex-memory-row', 'data-section': 'stats' },
+          h('span', { className: 'icex-memory-meta' }, t('panel.stats', {
+            entries: (stats.globalEntries ?? 0) + (stats.projectEntries ?? 0),
+            chars: stats.digestChars ?? 0,
+            candidates: stats.candidates ?? 0,
+          })),
+          stats.truncated === true ? h('span', { className: 'icex-memory-error' }, t('panel.truncated')) : null,
+          h('button', {
+            type: 'button',
+            className: 'icex-memory-button',
+            disabled: busy,
+            onClick: function () {
+              void act({ action: 'consolidate' })
+            },
+          }, t('panel.consolidate')),
+          h('button', {
+            type: 'button',
+            className: 'icex-memory-button',
+            disabled: busy,
+            onClick: function () {
+              void load()
+            },
+          }, t('panel.refresh'))),
+        h('div', { className: 'icex-memory-meta' }, stats.lastConsolidatedAt === null || stats.lastConsolidatedAt === undefined
+          ? ''
+          : t('panel.lastConsolidated', { time: String(stats.lastConsolidatedAt).replace('T', ' ').slice(0, 16) })),
+        h('h3', null, t('panel.candidates')),
+        h('div', { 'data-section': 'candidates' },
+          candidates.length === 0
+            ? h('div', { className: 'icex-memory-meta' }, t('panel.noCandidates'))
+            : candidates.map(function (candidate) {
+              const decision = candidate.decision
+              const verdict = decision === null || decision === undefined
+                ? t('panel.undecided')
+                : t('panel.modelSays', {
+                  action: decision.action === 'promote' ? t('panel.verdictPromote') : t('panel.verdictDismiss'),
+                  reason: decision.reason === '' ? '—' : decision.reason,
+                })
+              return h('div', { key: candidate.id, className: 'icex-memory-candidate', 'data-candidate': candidate.id },
+                h('div', null, candidate.text),
+                h('div', { className: 'icex-memory-meta' }, candidate.src + ' · ' + String(candidate.at ?? '').slice(0, 10)),
+                h('div', { className: decision === null || decision === undefined ? 'icex-memory-meta' : 'icex-memory-verdict' }, verdict),
+                h('div', { className: 'icex-memory-row' },
+                  h('button', {
+                    type: 'button',
+                    className: 'icex-memory-button',
+                    'data-action': 'promote',
+                    disabled: busy,
+                    onClick: function () {
+                      void act({ action: 'promote', id: candidate.id })
+                    },
+                  }, t('panel.promote')),
+                  h('button', {
+                    type: 'button',
+                    className: 'icex-memory-button',
+                    'data-action': 'dismiss',
+                    disabled: busy,
+                    onClick: function () {
+                      void act({ action: 'dismiss', id: candidate.id })
+                    },
+                  }, t('panel.dismiss'))))
+            })),
+        h('h3', null, t('panel.entries')),
+        h('div', { 'data-section': 'entries' },
+          entries.length === 0
+            ? h('div', { className: 'icex-memory-meta' }, t('panel.noCandidates'))
+            : entries.slice().reverse().map(function (entry) {
+              return h('div', { key: entry.id, className: 'icex-memory-row', 'data-entry': entry.id },
+                h('span', { className: 'icex-memory-kind' }, '[' + entry.kind + ']'),
+                h('span', null, entry.text))
+            })),
+        h('h3', null, t('panel.activity')),
+        h('div', { 'data-section': 'activity' },
+          activity.map(function (entry) {
+            return h('div', { key: 'a-' + entry.id, className: 'icex-memory-meta' },
+              String(entry.at ?? '').slice(0, 10) + ' · [' + entry.kind + '] ' + entry.text.slice(0, 40))
+          })),
+        error === null ? null : h('div', { className: 'icex-memory-error', role: 'alert' }, error))
+    }
+
     function apply(ctx) {
+      const PANEL_ID = PACKAGE + '/panel'
       ctx.effect(installStyles, 'icex-dsh-memory: styles')
       ctx.effect(function () {
         return ctx.locale.register(NS, { en: en, zh: zh })
@@ -268,7 +446,35 @@ window.__ModuleLoader__.load({
           name: 'plugins.bundle.config',
           key: PACKAGE,
           locale: NS,
-        }, MemoryPanel)
+        }, SettingsPage)
+      })
+      ctx.inject(['sidebarRightTabs'], function (scope) {
+        scope.effect(function () {
+          return scope.sidebarRightTabs.register({
+            id: PANEL_ID,
+            kind: 'icex-memory-panel',
+            title: function () {
+              return 'Memory'
+            },
+            guide: [{
+              id: 'open',
+              order: 80,
+              title: function () {
+                return '记忆'
+              },
+              description: function () {
+                return '模型的跨会话记忆与待确认候选'
+              },
+            }],
+          })
+        }, 'icex-dsh-memory: sidebar panel type')
+        scope.slots.inject('sidebar.right.pane.tab', function () {
+          return scope.slots.register({
+            name: 'sidebar.right.pane.tab',
+            key: PANEL_ID,
+            locale: NS,
+          }, MemoryPanel)
+        })
       })
     }
 
