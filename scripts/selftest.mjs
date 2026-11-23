@@ -41,6 +41,23 @@ check('prose preserved', readFileSync(c, 'utf8').includes('keep this prose'))
 check('archive written', readFileSync(m.archivePath(c), 'utf8').includes('pnpm'))
 
 
+// candidate capture: durable-looking user messages queue for the next session
+check('durable message is captured', m.looksDurable('以后所有回答都要先给结论') === true)
+check('task message is not captured', m.looksDurable('帮我把这个文件读一下') === false)
+check('context message is not captured', m.looksDurable('<system-reminder>以后</system-reminder>') === false)
+
+const queued = m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@1')
+check('candidate is queued', queued !== null && m.readPending().some((entry) => entry.id === queued.id))
+check('candidate is deduplicated', m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@1') === null)
+check('digest shows candidates', m.renderDigest('/tmp/selftest').includes('[candidates]'))
+check('dismiss removes a candidate', m.dismissCandidate(queued.id) === true && m.readPending().every((entry) => entry.id !== queued.id))
+
+m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@1')
+const promoted = m.makeEntry('以后所有回答都要先给结论', 'pref', 'selftest@2')
+m.appendEntry(store, promoted)
+m.dropMatchingCandidate(promoted.text)
+check('promotion drops a similar candidate', m.readPending().length === 0)
+
 // settings-page editor: route registration, read, write, guards
 let captured = null
 const fakeConnection = {

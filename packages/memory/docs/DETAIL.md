@@ -69,6 +69,19 @@
 | `dedupeSimilarity` | `0.85` | 判定重复的相似度阈值（0.5–0.99） |
 
 
+## 候选记忆（自动捕获）
+
+光靠模型自觉会漏，所以插件在旁边做一层低成本的捕获：
+
+- 监听会话里的用户消息（只认 `source.kind = user`，跳过 runtime-context / skill-catalog 这类注入内容）
+- 命中「记住 / 以后 / 不要 / 必须 / 约定 / 偏好 / always / never …」且不超过 400 字时，把原话截到 200 字写进 `~/.dsh/memory/pending.jsonl`
+- 队列最多 50 条，超过 14 天自动过期；同样的原话只存一次
+- 下次会话的摘要里会多一段 `[candidates]`，最多列 3 条，并写明「用 memory add 转正，其余用 memory action=dismiss 丢掉」
+- `memory add` 成功后，与新增事实高度相似的候选会自动出队
+
+工具新增两个 action：`candidates`（列出待确认项）和 `dismiss`（按 id 丢弃）。
+
+
 ## 设置页编辑
 
 插件在 **Plugins → Icex DSH Memory** 的配置区里提供一个「记忆」板块：
