@@ -38,6 +38,7 @@ window.__ModuleLoader__.load({
       'settings.hint': 'Entries are injected at the start of the next session. Keep one fact per line, at most 200 characters.',
       'panel.title': 'Memory',
       'panel.description': 'What the model remembers, and what it is still deciding.',
+      'panel.subtitle': 'Cross-session memory and pending candidates',
       'panel.stats': '{entries} entries · digest {chars} chars · {candidates} candidates',
       'panel.truncated': 'truncated by the budget',
       'panel.lastConsolidated': 'Last consolidated: {time}',
@@ -54,6 +55,13 @@ window.__ModuleLoader__.load({
       'panel.verdictDismiss': 'dismiss',
       'panel.refresh': 'Refresh',
       'panel.failed': 'Failed: {message}',
+      'panel.statEntries': 'entries',
+      'panel.statChars': 'digest chars',
+      'panel.statCandidates': 'candidates',
+      'panel.statConsolidated': 'last consolidated',
+      'panel.pending': 'pending',
+      'panel.noReason': 'no reason given',
+      'panel.noEntries': 'Nothing stored yet.',
     }
 
     const zh = {
@@ -78,6 +86,7 @@ window.__ModuleLoader__.load({
       'settings.hint': '记忆会在下一个会话开始时注入。一行一条事实，每条不超过 200 字。',
       'panel.title': '记忆',
       'panel.description': '模型记住了什么，以及它还在判断什么。',
+      'panel.subtitle': '跨会话记忆与待确认候选',
       'panel.stats': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 条候选',
       'panel.truncated': '已被预算截断',
       'panel.lastConsolidated': '上次整理：{time}',
@@ -94,6 +103,13 @@ window.__ModuleLoader__.load({
       'panel.verdictDismiss': '丢弃',
       'panel.refresh': '刷新',
       'panel.failed': '失败：{message}',
+      'panel.statEntries': '条目',
+      'panel.statChars': '摘要字符',
+      'panel.statCandidates': '候选',
+      'panel.statConsolidated': '上次整理',
+      'panel.pending': '待判',
+      'panel.noReason': '未给理由',
+      'panel.noEntries': '还没有存任何东西。',
     }
 
     /** Minimal translator with {name} interpolation over the slot's locale texts. */
@@ -130,6 +146,54 @@ window.__ModuleLoader__.load({
         '.icex-memory-candidate { padding: 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); margin-bottom: 8px; }',
         '.icex-memory-kind { color: var(--dsw-alias-label-tertiary); font-size: 11px; margin-right: 6px; }',
         '.icex-memory-verdict { color: var(--dsw-alias-state-business-primary); font-size: 12px; margin: 4px 0; }',
+        '.icex-mem { box-sizing: border-box; display: flex; flex-direction: column; gap: 16px; padding: 16px; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 20px; min-width: 0; }',
+        '.icex-mem-head { display: flex; flex-direction: column; gap: 2px; }',
+        '.icex-mem-title { margin: 0; font-size: 16px; font-weight: 500; line-height: 24px; }',
+        '.icex-mem-sub { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }',
+        '.icex-mem-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }',
+        '.icex-mem-stat { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md); background: var(--dsw-alias-bg-layer-1); }',
+        '.icex-mem-stat b { font-size: 14px; font-weight: 500; line-height: 20px; }',
+        '.icex-mem-stat span { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+        '.icex-mem-section { display: flex; flex-direction: column; gap: 8px; }',
+        '.icex-mem-section-head { display: flex; align-items: center; gap: 8px; }',
+        '.icex-mem-section-title { margin: 0; font-size: 13px; font-weight: 500; line-height: 20px; }',
+        '.icex-mem-count { color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+        '.icex-mem-spacer { flex: 1; }',
+        '.icex-mem-btn { height: 24px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-md); background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; cursor: pointer; }',
+        '.icex-mem-btn:hover:not(:disabled) { background: var(--dsw-alias-bg-layer-1); }',
+        '.icex-mem-btn:disabled { opacity: 0.5; cursor: default; }',
+        '.icex-mem-btn-primary { background: var(--dsw-alias-state-business-primary); border-color: transparent; color: var(--dsw-alias-label-on-color); }',
+        '.icex-mem-btn-quiet { border-color: transparent; color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-cards { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }',
+        '.icex-mem-card { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-layer-1); }',
+        '.icex-mem-card-text { margin: 0; font-size: 13px; line-height: 19px; overflow-wrap: anywhere; }',
+        '.icex-mem-meta { display: flex; gap: 8px; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+        '.icex-mem-src { max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+        '.icex-mem-verdict { display: flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 18px; }',
+        '.icex-mem-pill { flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 20%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 1; }',
+        '.icex-mem-pill[data-tone="promote"] { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); }',
+        '.icex-mem-pill[data-tone="dismiss"] { background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 18%, transparent); color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-reason { overflow-wrap: anywhere; }',
+        '.icex-mem-actions { display: flex; gap: 8px; }',
+        '.icex-mem-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }',
+        '.icex-mem-row { display: flex; align-items: baseline; gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--dsw-radius-md); border-bottom: 0.5px solid var(--dsw-alias-border-l1); }',
+        '.icex-mem-row:hover { background: var(--dsw-alias-bg-layer-1); }',
+        '.icex-mem-row:last-child { border-bottom: 0; }',
+        '.icex-mem-kind { flex: none; height: 18px; padding: 0 6px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 18px; letter-spacing: 0.02em; }',
+        '.icex-mem-row-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }',
+        '.icex-mem-row-date { flex: none; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+        '.icex-mem-timeline { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }',
+        '.icex-mem-event { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 12px; line-height: 18px; }',
+        '.icex-mem-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-state-business-primary); align-self: center; }',
+        '.icex-mem-dot[data-kind="pitfall"] { background: var(--dsw-alias-state-error-primary); }',
+        '.icex-mem-dot[data-kind="decision"] { background: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-event-text { color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }',
+        '.icex-mem-event-date { color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+        '.icex-mem-empty { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }',
+        '.icex-mem-note { margin: 0; font-size: 12px; line-height: 18px; }',
+        '.icex-mem-note-warn { color: var(--dsw-alias-label-secondary); }',
+        '.icex-mem-note-error { color: var(--dsw-alias-state-error-primary); }',
+        '.icex-mem-loading { padding: 24px 0; color: var(--dsw-alias-label-tertiary); font-size: 12px; text-align: center; }',
       ].join('\n')
       document.head.appendChild(style)
       return function () {
@@ -347,92 +411,103 @@ window.__ModuleLoader__.load({
       }, [])
 
       if (props.view === 'summary') return null
-      if (data === null) return h('div', { className: 'icex-memory', 'data-section': 'loading' }, t('settings.loading'))
+      if (data === null) {
+        return h('div', { className: 'icex-mem' },
+          h('div', { className: 'icex-mem-loading', 'data-section': 'loading' }, t('settings.loading')))
+      }
 
       const stats = data.stats ?? {}
       const candidates = Array.isArray(data.candidates) ? data.candidates : []
       const entries = Array.isArray(data.global) ? data.global : []
-      const activity = entries.slice().reverse().slice(0, 6)
+      const activity = entries.slice(-6).reverse()
+      const total = (stats.globalEntries ?? 0) + (stats.projectEntries ?? 0)
 
-      return h('div', { className: 'icex-memory' },
-        h('section', { className: 'icex-memory-row', 'data-section': 'stats' },
-          h('span', { className: 'icex-memory-meta' }, t('panel.stats', {
-            entries: (stats.globalEntries ?? 0) + (stats.projectEntries ?? 0),
-            chars: stats.digestChars ?? 0,
-            candidates: stats.candidates ?? 0,
-          })),
-          stats.truncated === true ? h('span', { className: 'icex-memory-error' }, t('panel.truncated')) : null,
-          h('button', {
-            type: 'button',
-            className: 'icex-memory-button',
-            disabled: busy,
-            onClick: function () {
-              void act({ action: 'consolidate' })
-            },
-          }, t('panel.consolidate')),
-          h('button', {
-            type: 'button',
-            className: 'icex-memory-button',
-            disabled: busy,
-            onClick: function () {
-              void load()
-            },
-          }, t('panel.refresh'))),
-        h('div', { className: 'icex-memory-meta' }, stats.lastConsolidatedAt === null || stats.lastConsolidatedAt === undefined
-          ? ''
-          : t('panel.lastConsolidated', { time: String(stats.lastConsolidatedAt).replace('T', ' ').slice(0, 16) })),
-        h('h3', null, t('panel.candidates')),
-        h('div', { 'data-section': 'candidates' },
+      function button(label, onClick, tone) {
+        return h('button', {
+          type: 'button',
+          className: tone === 'quiet' ? 'icex-mem-btn icex-mem-btn-quiet' : 'icex-mem-btn',
+          disabled: busy,
+          onClick: onClick,
+        }, label)
+      }
+
+      return h('div', { className: 'icex-mem' },
+        h('header', { className: 'icex-mem-head', 'data-section': 'header' },
+          h('h2', { className: 'icex-mem-title' }, t('panel.title')),
+          h('p', { className: 'icex-mem-sub' }, t('panel.description'))),
+
+        h('div', { className: 'icex-mem-stats', 'data-section': 'stats' },
+          h('div', { className: 'icex-mem-stat' }, h('b', null, String(total)), h('span', null, t('panel.statEntries'))),
+          h('div', { className: 'icex-mem-stat' }, h('b', null, String(stats.digestChars ?? 0)), h('span', null, t('panel.statChars'))),
+          h('div', { className: 'icex-mem-stat' }, h('b', null, String(stats.candidates ?? 0)), h('span', null, t('panel.statCandidates'))),
+          h('div', { className: 'icex-mem-stat' }, h('b', null, stats.lastConsolidatedAt === null || stats.lastConsolidatedAt === undefined
+            ? '—'
+            : String(stats.lastConsolidatedAt).replace('T', ' ').slice(5, 16)), h('span', null, t('panel.statConsolidated')))),
+        stats.truncated === true ? h('p', { className: 'icex-mem-note icex-mem-note-warn' }, t('panel.truncated')) : null,
+
+        h('section', { className: 'icex-mem-section', 'data-section': 'candidates' },
+          h('div', { className: 'icex-mem-section-head' },
+            h('h3', { className: 'icex-mem-section-title' }, t('panel.candidates')),
+            h('span', { className: 'icex-mem-count' }, String(candidates.length)),
+            h('span', { className: 'icex-mem-spacer' }),
+            button(t('panel.consolidate'), function () { void act({ action: 'consolidate' }) }, 'quiet'),
+            button(t('panel.refresh'), function () { void load() }, 'quiet')),
           candidates.length === 0
-            ? h('div', { className: 'icex-memory-meta' }, t('panel.noCandidates'))
-            : candidates.map(function (candidate) {
+            ? h('p', { className: 'icex-mem-empty' }, t('panel.noCandidates'))
+            : h('ul', { className: 'icex-mem-cards' }, candidates.map(function (candidate) {
               const decision = candidate.decision
-              const verdict = decision === null || decision === undefined
-                ? t('panel.undecided')
-                : t('panel.modelSays', {
-                  action: decision.action === 'promote' ? t('panel.verdictPromote') : t('panel.verdictDismiss'),
-                  reason: decision.reason === '' ? '—' : decision.reason,
-                })
-              return h('div', { key: candidate.id, className: 'icex-memory-candidate', 'data-candidate': candidate.id },
-                h('div', null, candidate.text),
-                h('div', { className: 'icex-memory-meta' }, candidate.src + ' · ' + String(candidate.at ?? '').slice(0, 10)),
-                h('div', { className: decision === null || decision === undefined ? 'icex-memory-meta' : 'icex-memory-verdict' }, verdict),
-                h('div', { className: 'icex-memory-row' },
+              return h('li', { key: candidate.id, className: 'icex-mem-card', 'data-candidate': candidate.id },
+                h('p', { className: 'icex-mem-card-text' }, candidate.text),
+                h('div', { className: 'icex-mem-meta' },
+                  h('span', { className: 'icex-mem-src', title: candidate.src }, candidate.src),
+                  h('span', null, String(candidate.at ?? '').slice(0, 10))),
+                decision === null || decision === undefined
+                  ? h('div', { className: 'icex-mem-verdict icex-mem-verdict-pending' }, h('span', { className: 'icex-mem-pill' }, t('panel.pending')), t('panel.undecided'))
+                  : h('div', { className: 'icex-mem-verdict', 'data-tone': decision.action },
+                    h('span', { className: 'icex-mem-pill', 'data-tone': decision.action }, decision.action === 'promote' ? t('panel.verdictPromote') : t('panel.verdictDismiss')),
+                    h('span', { className: 'icex-mem-reason' }, decision.reason === '' ? t('panel.noReason') : decision.reason)),
+                h('div', { className: 'icex-mem-actions' },
                   h('button', {
                     type: 'button',
-                    className: 'icex-memory-button',
+                    className: 'icex-mem-btn icex-mem-btn-primary',
                     'data-action': 'promote',
                     disabled: busy,
-                    onClick: function () {
-                      void act({ action: 'promote', id: candidate.id })
-                    },
+                    onClick: function () { void act({ action: 'promote', id: candidate.id }) },
                   }, t('panel.promote')),
                   h('button', {
                     type: 'button',
-                    className: 'icex-memory-button',
+                    className: 'icex-mem-btn icex-mem-btn-quiet',
                     'data-action': 'dismiss',
                     disabled: busy,
-                    onClick: function () {
-                      void act({ action: 'dismiss', id: candidate.id })
-                    },
+                    onClick: function () { void act({ action: 'dismiss', id: candidate.id }) },
                   }, t('panel.dismiss'))))
-            })),
-        h('h3', null, t('panel.entries')),
-        h('div', { 'data-section': 'entries' },
+            }))),
+
+        h('section', { className: 'icex-mem-section', 'data-section': 'entries' },
+          h('div', { className: 'icex-mem-section-head' },
+            h('h3', { className: 'icex-mem-section-title' }, t('panel.entries')),
+            h('span', { className: 'icex-mem-count' }, String(entries.length))),
           entries.length === 0
-            ? h('div', { className: 'icex-memory-meta' }, t('panel.noCandidates'))
-            : entries.slice().reverse().map(function (entry) {
-              return h('div', { key: entry.id, className: 'icex-memory-row', 'data-entry': entry.id },
-                h('span', { className: 'icex-memory-kind' }, '[' + entry.kind + ']'),
-                h('span', null, entry.text))
-            })),
-        h('h3', null, t('panel.activity')),
-        h('div', { 'data-section': 'activity' },
-          activity.map(function (entry) {
-            return h('div', { key: 'a-' + entry.id, className: 'icex-memory-meta' },
-              String(entry.at ?? '').slice(0, 10) + ' · [' + entry.kind + '] ' + entry.text.slice(0, 40))
-          })),
-        error === null ? null : h('div', { className: 'icex-memory-error', role: 'alert' }, error))
+            ? h('p', { className: 'icex-mem-empty' }, t('panel.noEntries'))
+            : h('ul', { className: 'icex-mem-list' }, entries.slice().reverse().map(function (entry) {
+              return h('li', { key: entry.id, className: 'icex-mem-row', 'data-entry': entry.id },
+                h('span', { className: 'icex-mem-kind', 'data-kind': entry.kind }, entry.kind),
+                h('span', { className: 'icex-mem-row-text' }, entry.text),
+                h('span', { className: 'icex-mem-row-date' }, String(entry.at ?? '').slice(5)))
+            }))),
+
+        h('section', { className: 'icex-mem-section', 'data-section': 'activity' },
+          h('div', { className: 'icex-mem-section-head' },
+            h('h3', { className: 'icex-mem-section-title' }, t('panel.activity')),
+            h('span', { className: 'icex-mem-count' }, String(activity.length))),
+          h('ol', { className: 'icex-mem-timeline' }, activity.map(function (entry) {
+            return h('li', { key: 'a-' + entry.id, className: 'icex-mem-event' },
+              h('span', { className: 'icex-mem-dot', 'data-kind': entry.kind }),
+              h('span', { className: 'icex-mem-event-text' }, entry.text),
+              h('span', { className: 'icex-mem-event-date' }, String(entry.at ?? '').slice(5)))
+          }))),
+
+        error === null ? null : h('p', { className: 'icex-mem-note icex-mem-note-error', role: 'alert' }, error))
     }
 
     function apply(ctx) {
@@ -448,22 +523,31 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, SettingsPage)
       })
+      const bound = typeof ctx.locale?.bind === 'function' ? ctx.locale.bind(NS) : function (key) { return key }
+      const label = function (key) {
+        try {
+          const value = bound(key)
+          return typeof value === 'string' ? value : key
+        } catch (error) {
+          return key
+        }
+      }
       ctx.inject(['sidebarRightTabs'], function (scope) {
         scope.effect(function () {
           return scope.sidebarRightTabs.register({
             id: PANEL_ID,
             kind: 'icex-memory-panel',
             title: function () {
-              return 'Memory'
+              return label('panel.title')
             },
             guide: [{
               id: 'open',
               order: 80,
               title: function () {
-                return '记忆'
+                return label('panel.title')
               },
               description: function () {
-                return '模型的跨会话记忆与待确认候选'
+                return label('panel.subtitle')
               },
             }],
           })

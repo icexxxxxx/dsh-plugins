@@ -79,7 +79,15 @@ check('panel body registered', typeof panelComponent === 'function')
 check('settings editor still registered', typeof configComponent === 'function')
 
 const texts = {
-  'panel.stats': '{entries} 条 · 摘要 {chars} 字符 · {candidates} 条候选',
+  'panel.title': '记忆',
+  'panel.description': '模型记住了什么',
+  'panel.statEntries': '条目',
+  'panel.statChars': '摘要字符',
+  'panel.statCandidates': '候选',
+  'panel.statConsolidated': '上次整理',
+  'panel.pending': '待判',
+  'panel.noReason': '未给理由',
+  'panel.noEntries': '还没有存任何东西。',
   'panel.candidates': '候选',
   'panel.entries': '已存条目',
   'panel.activity': '最近活动',
@@ -112,11 +120,13 @@ const payload = {
 
 const tree = panelComponent({ initial: payload, t: texts })
 const flat = JSON.stringify(tree)
-check('renders stats', flat.includes('1 条 · 摘要 120 字符 · 2 条候选'))
+check('renders stats', flat.includes('"1"') && flat.includes('"120"') && flat.includes('"2"') && flat.includes('条目'))
+check('renders the panel header', flat.includes('记忆') && flat.includes('icex-mem-title'))
+check('uses the DSH card structure', flat.includes('icex-mem-card') && flat.includes('icex-mem-stat') && flat.includes('icex-mem-kind'))
 check('renders both candidates', flat.includes('以后所有回答都要先给结论') && flat.includes('不要用表格'))
-check('shows the model verdict', flat.includes('模型建议：转正 — 用户明确要求'))
-check('shows undecided state', flat.includes('模型还没判断这条。'))
-check('renders entries and activity', flat.includes('已存条目') && flat.includes('最近活动') && flat.includes('中文沟通，结论先行'))
+check('shows the model verdict', flat.includes('用户明确要求') && flat.includes('icex-mem-pill'))
+check('shows undecided state', flat.includes('模型还没判断这条。') && flat.includes('待判'))
+check('renders entries and activity', flat.includes('已存条目') && flat.includes('最近活动') && flat.includes('中文沟通，结论先行') && flat.includes('icex-mem-event'))
 
 // click "转正" on c2
 function findAction(node, action) {
