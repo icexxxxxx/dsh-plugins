@@ -186,7 +186,13 @@ async function waitForRun(tag) {
 async function verifyNpm(name, version) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     try {
-      const body = execFileSync('curl', ['-fsS', '-m', '10', 'https://registry.npmjs.org/' + name + '?t=' + Date.now()], { encoding: 'utf8' })
+      const url = 'https://registry.npmjs.org/' + name + '?t=' + Date.now()
+      let body
+      try {
+        body = execFileSync('curl', ['-fsS', '-m', '10', url], { encoding: 'utf8' })
+      } catch (error) {
+        body = execFileSync('curl', ['-fsS', '-m', '10', '-x', PROXY, url], { encoding: 'utf8' })
+      }
       const doc = JSON.parse(body)
       if (doc['dist-tags']?.latest === version || doc.versions?.[version] !== undefined) {
         log('  ' + name + '@' + version + ' live')
