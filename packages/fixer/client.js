@@ -1025,6 +1025,18 @@ window.__ModuleLoader__.load({
       'menu.deleteConfirm': 'Delete this session? A running session is stopped first; its log moves to the trash folder, and the current view returns to a new Session.',
       'menu.deleteFailed': 'Delete failed: {message}',
       'menu.deleteLive': 'This session is running and could not be stopped. Try again in a moment.',
+      'edit.title': 'Edit and resend',
+      'edit.cancel': 'Cancel',
+      'edit.send': 'Resend',
+      'edit.sending': 'Creating branch…',
+      'edit.hint': 'Enter to resend · Shift+Enter new line · Esc cancel',
+      'edit.failed': 'Could not resend: {message}',
+      'edit.unavailable': 'editing is unavailable',
+      'edit.offline': 'the Host is unreachable',
+      'edit.branchBadge': 'Branched',
+      'edit.openBranch': 'Open the branch',
+      'edit.toast': 'Branched from that message',
+      'edit.back': 'Back to original session',
     }
 
     const zh = {
@@ -1071,6 +1083,18 @@ window.__ModuleLoader__.load({
       'menu.deleteConfirm': '删除这个会话？正在运行的会话会先被停止；日志会移到回收站目录，当前视图会回到新会话。',
       'menu.deleteFailed': '删除失败：{message}',
       'menu.deleteLive': '这个会话还在运行，没能停下来；稍后再试一次。',
+      'edit.title': '编辑并重发',
+      'edit.cancel': '取消',
+      'edit.send': '重发',
+      'edit.sending': '正在创建分支…',
+      'edit.hint': 'Enter 重发 · Shift+Enter 换行 · Esc 取消',
+      'edit.failed': '重发失败：{message}',
+      'edit.unavailable': '编辑不可用',
+      'edit.offline': '无法连接宿主',
+      'edit.branchBadge': '已分支',
+      'edit.openBranch': '打开分支',
+      'edit.toast': '已从该条消息创建分支',
+      'edit.back': '返回原会话',
       'rail.fallback': '第 {turn} 轮',
     }
 
@@ -1120,6 +1144,27 @@ window.__ModuleLoader__.load({
       '.icex-tip-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 18px; }',
       'html[data-icex-fixer-hide-native-rail][data-icex-fixer-rail-mounted] [data-conversation-content] nav[aria-label] { display: none !important; }',
       '@media (prefers-reduced-motion: reduce) { .icex-rail-dot { transition: none; } .icex-rail-btn[data-busy] .icex-rail-dot { animation: none; } }',
+      '.icex-edit-row { position: relative; }',
+      '.icex-edit-wrap { position: absolute; z-index: 3; display: inline-flex; align-items: center; gap: 4px; pointer-events: none; }',
+      '.icex-edit-pencil { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; opacity: 0; transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease; }',
+      '.icex-edit-row:hover .icex-edit-pencil, .icex-edit-pencil:focus-visible { opacity: 1; }',
+      '.icex-edit-pencil:hover { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }',
+      '.icex-edit-pencil:disabled { opacity: 0.4; cursor: default; }',
+      '.icex-edit-badge { pointer-events: auto; height: 18px; padding: 0 7px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); font: inherit; font-size: 10px; line-height: 18px; cursor: pointer; }',
+      '.icex-edit-badge:hover { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 26%, transparent); }',
+      '.icex-edit-overlay { position: fixed; z-index: 60; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--dsw-alias-state-business-primary); border-radius: var(--dsw-radius-lg); background: var(--dsw-specific-menu); box-shadow: var(--dsw-elevation-panel); }',
+      '.icex-edit-textarea { box-sizing: border-box; width: 100%; min-height: 64px; max-height: 44vh; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; resize: vertical; outline: none; }',
+      '.icex-edit-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }',
+      '.icex-edit-hint { font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); }',
+      '.icex-edit-buttons { display: inline-flex; align-items: center; gap: 6px; }',
+      '.icex-edit-cancel, .icex-edit-send { height: 28px; padding: 0 12px; border-radius: var(--dsw-radius-md); font: inherit; font-size: 12px; cursor: pointer; }',
+      '.icex-edit-cancel { border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: var(--dsw-alias-label-secondary); }',
+      '.icex-edit-send { border: 0; background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-label-on-color); }',
+      '.icex-edit-send:disabled, .icex-edit-cancel:disabled { opacity: 0.55; cursor: default; }',
+      '.icex-edit-error { padding: 6px 8px; border-radius: var(--dsw-radius-md); background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #d5484b) 12%, transparent); color: var(--dsw-alias-state-error-primary, #d5484b); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }',
+      '.icex-edit-toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 80; display: flex; align-items: center; gap: 12px; max-width: min(560px, calc(100vw - 32px)); padding: 8px 12px; border-radius: var(--dsw-radius-lg); background: var(--dsw-specific-menu); color: var(--dsw-alias-label-primary); box-shadow: var(--dsw-elevation-panel); font-size: 12px; line-height: 18px; }',
+      '.icex-edit-toastAction { padding: 0; border: 0; background: none; color: var(--dsw-alias-state-business-primary); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }',
+      '.icex-edit-toastAction:hover { text-decoration: underline; }',
     ]
 
     const STYLES = STYLE_LINES.join(NEWLINE)
@@ -1215,6 +1260,419 @@ window.__ModuleLoader__.load({
       }, busy ? t('menu.deleting') : t('menu.deleteSession'))
     }
 
+    /*
+     * Edit-and-resend. The Host forks the session just before a turn and
+     * prompts the child with the rewritten text; this half decorates each sent
+     * user bubble with a pencil, edits the text in a bubble-sized overlay, and
+     * then opens the branch. A branch badge stays beside the original turn.
+     */
+
+    const EDIT_WRAP = 'icex-edit-wrap'
+
+    /** The pencil glyph, built without innerHTML so text cannot be injected. */
+    function pencilIcon() {
+      const ns = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(ns, 'svg')
+      svg.setAttribute('viewBox', '0 0 24 24')
+      svg.setAttribute('width', '13')
+      svg.setAttribute('height', '13')
+      svg.setAttribute('aria-hidden', 'true')
+      svg.setAttribute('fill', 'currentColor')
+      const path = document.createElementNS(ns, 'path')
+      path.setAttribute('d', 'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z')
+      svg.appendChild(path)
+      return svg
+    }
+
+    /** Open a session id in this browser through the workspace service. */
+    function openBranch(childId) {
+      try {
+        const workspace = runtimeContext?.uiWorkspace
+        if (workspace !== undefined && workspace !== null && typeof workspace.openSession === 'function') {
+          Promise.resolve(workspace.openSession(childId)).catch(function () {})
+          return true
+        }
+      } catch (error) {
+        // Fall through to the copyable id.
+      }
+      return false
+    }
+
+    /** A short-lived toast with one optional action, portalled to the body. */
+    function showBranchToast(message, actionLabel, action) {
+      if (typeof document === 'undefined' || document.body === null) return
+      const toast = document.createElement('div')
+      toast.className = 'icex-edit-toast'
+      toast.setAttribute('role', 'status')
+      const text = document.createElement('span')
+      text.textContent = message
+      toast.appendChild(text)
+      let timer = null
+      function dismiss() {
+        if (timer !== null) clearTimeout(timer)
+        toast.remove()
+      }
+      if (typeof actionLabel === 'string' && typeof action === 'function') {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'icex-edit-toastAction'
+        button.textContent = actionLabel
+        button.addEventListener('click', function () {
+          dismiss()
+          action()
+        })
+        toast.appendChild(button)
+      }
+      document.body.appendChild(toast)
+      timer = setTimeout(dismiss, 8000)
+    }
+
+    /** Load the branch markers for one session and decorate every sent turn. */
+    function installEditBubbles(sessionId, t) {
+      if (typeof document === 'undefined' || document.body === null) return function () {}
+      const marks = new Map()
+      let disposed = false
+      let frame = 0
+      let overlay = null
+      let observer = null
+
+      function findScroller() {
+        const content = document.querySelector('[data-conversation-content]')
+        const scoped = content === null ? null : content.querySelector('[data-conversation-scroll]')
+        return scoped !== null ? scoped : document.querySelector('[data-conversation-scroll]')
+      }
+
+      function place(row) {
+        const wrap = row.querySelector(':scope > .' + EDIT_WRAP)
+        const bubble = row.querySelector('[data-message-bubble]')
+        if (wrap === null || bubble === null) return
+        const rowRect = row.getBoundingClientRect()
+        const bubbleRect = bubble.getBoundingClientRect()
+        if (bubbleRect.width <= 0) return
+        const width = wrap.getBoundingClientRect().width
+        wrap.style.left = Math.max(0, Math.round(bubbleRect.right - rowRect.left - width)) + 'px'
+        wrap.style.top = Math.max(0, Math.round(bubbleRect.bottom - rowRect.top + 2)) + 'px'
+      }
+
+      /** Keep the badge in sync with the marker map (a turn can be edited twice). */
+      function syncBadge(wrap, turn) {
+        const previous = wrap.querySelector('.icex-edit-badge')
+        if (previous !== null) previous.remove()
+        const childId = marks.get(turn)
+        if (typeof childId !== 'string') return
+        const badge = document.createElement('button')
+        badge.type = 'button'
+        badge.className = 'icex-edit-badge'
+        badge.textContent = t('edit.branchBadge')
+        badge.title = t('edit.openBranch')
+        badge.addEventListener('click', function () {
+          if (openBranch(childId) === false) showBranchToast(childId)
+        })
+        wrap.insertBefore(badge, wrap.firstChild)
+      }
+
+      function buildWrap(turn, row, bubble) {
+        const wrap = document.createElement('span')
+        wrap.className = EDIT_WRAP
+        const pencil = document.createElement('button')
+        pencil.type = 'button'
+        pencil.className = 'icex-edit-pencil'
+        pencil.title = t('edit.title')
+        pencil.setAttribute('aria-label', t('edit.title'))
+        pencil.appendChild(pencilIcon())
+        pencil.addEventListener('click', function () {
+          beginEdit(turn, row, bubble, pencil)
+        })
+        wrap.appendChild(pencil)
+        syncBadge(wrap, turn)
+        return wrap
+      }
+
+      function decorate() {
+        if (disposed) return
+        const area = findScroller()
+        if (area === null) return
+        const rows = area.querySelectorAll('[data-chat-flow-kind="user"][data-chat-turn]')
+        const seen = new Set()
+        for (let index = 0; index < rows.length; index += 1) {
+          const row = rows[index]
+          const turn = Number(row.getAttribute('data-chat-turn'))
+          if (!Number.isSafeInteger(turn) || seen.has(turn)) continue
+          const bubble = row.querySelector('[data-message-bubble]')
+          if (bubble === null || (bubble.textContent ?? '').trim() === '') continue
+          seen.add(turn)
+          const existing = row.querySelector(':scope > .' + EDIT_WRAP)
+          if (existing !== null) {
+            syncBadge(existing, turn)
+            place(row)
+            continue
+          }
+          row.classList.add('icex-edit-row')
+          row.appendChild(buildWrap(turn, row, bubble))
+          place(row)
+        }
+      }
+
+      function schedule() {
+        if (frame !== 0 || disposed) return
+        frame = requestAnimationFrame(function () {
+          frame = 0
+          decorate()
+        })
+      }
+
+      function closeOverlay() {
+        if (overlay === null) return
+        const current = overlay
+        overlay = null
+        if (typeof current.restore === 'function') current.restore()
+        current.remove()
+        window.removeEventListener('resize', current.reposition)
+      }
+
+      async function beginEdit(turn, row, bubble, pencil) {
+        if (overlay !== null) return
+        pencil.disabled = true
+        let reply = null
+        try {
+          const response = await fetch('/api/icex-fixer/branch?sessionId=' + encodeURIComponent(sessionId) + '&turn=' + String(turn), {
+            credentials: 'same-origin',
+            headers: { accept: 'application/json' },
+          })
+          reply = await response.json().catch(function () { return null })
+        } catch (error) {
+          reply = null
+        }
+        pencil.disabled = false
+        if (disposed) return
+        if (reply === null || reply.ok !== true) {
+          showBranchToast(t('edit.failed', { message: reply?.error ?? t('edit.unavailable') }))
+          return
+        }
+        openEditor(turn, bubble, reply.text)
+      }
+
+      /** Build the bubble-sized editor; the original bubble stays hidden below. */
+      function openEditor(turn, bubble, original) {
+        if (overlay !== null) return
+        const element = document.createElement('div')
+        element.className = 'icex-edit-overlay'
+
+        const textarea = document.createElement('textarea')
+        textarea.className = 'icex-edit-textarea'
+        textarea.value = original
+        textarea.setAttribute('aria-label', t('edit.title'))
+        element.appendChild(textarea)
+
+        const error = document.createElement('div')
+        error.className = 'icex-edit-error'
+        error.hidden = true
+        element.appendChild(error)
+
+        const footer = document.createElement('div')
+        footer.className = 'icex-edit-footer'
+        const hint = document.createElement('span')
+        hint.className = 'icex-edit-hint'
+        hint.textContent = t('edit.hint')
+        footer.appendChild(hint)
+        const buttons = document.createElement('span')
+        buttons.className = 'icex-edit-buttons'
+        const cancel = document.createElement('button')
+        cancel.type = 'button'
+        cancel.className = 'icex-edit-cancel'
+        cancel.textContent = t('edit.cancel')
+        const send = document.createElement('button')
+        send.type = 'button'
+        send.className = 'icex-edit-send'
+        send.textContent = t('edit.send')
+        buttons.appendChild(cancel)
+        buttons.appendChild(send)
+        footer.appendChild(buttons)
+        element.appendChild(footer)
+
+        const previousVisibility = bubble.style.visibility
+        bubble.style.visibility = 'hidden'
+
+        let busy = false
+        let composing = false
+        function fail(message) {
+          error.textContent = message
+          error.hidden = false
+        }
+        function restore() {
+          bubble.style.visibility = previousVisibility
+        }
+        function reposition() {
+          if (overlay === null) return
+          const rect = bubble.getBoundingClientRect()
+          element.style.left = Math.round(rect.left) + 'px'
+          element.style.top = Math.round(rect.top) + 'px'
+          element.style.width = Math.round(rect.width) + 'px'
+          element.style.minHeight = Math.round(Math.max(96, rect.height)) + 'px'
+          const box = element.getBoundingClientRect()
+          if (box.top + box.height > window.innerHeight - 12) {
+            element.style.top = Math.max(8, window.innerHeight - box.height - 12) + 'px'
+          }
+          if (box.left + box.width > window.innerWidth - 12) {
+            element.style.left = Math.max(8, window.innerWidth - box.width - 12) + 'px'
+          }
+        }
+        async function submit() {
+          if (busy) return
+          const text = textarea.value
+          if (text.trim() === '') {
+            textarea.focus()
+            return
+          }
+          if (text.trim() === original.trim()) {
+            closeOverlay()
+            return
+          }
+          busy = true
+          error.hidden = true
+          cancel.disabled = true
+          send.disabled = true
+          send.textContent = t('edit.sending')
+          let reply = null
+          let status = ''
+          try {
+            const response = await fetch('/api/icex-fixer/branch', {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ sessionId: sessionId, turn: turn, text: text }),
+            })
+            status = String(response.status)
+            reply = await response.json().catch(function () { return null })
+          } catch (requestError) {
+            reply = null
+          }
+          if (disposed) return
+          if (reply !== null && reply.ok === true && typeof reply.sessionId === 'string') {
+            marks.set(turn, reply.sessionId)
+            closeOverlay()
+            decorate()
+            showBranchToast(t('edit.toast'), t('edit.back'), function () {
+              openBranch(sessionId)
+            })
+            if (openBranch(reply.sessionId) === false) showBranchToast('session ' + reply.sessionId)
+            return
+          }
+          busy = false
+          cancel.disabled = false
+          send.disabled = false
+          send.textContent = t('edit.send')
+          const reason = reply !== null && typeof reply.error === 'string' && reply.error !== ''
+            ? reply.error
+            : status === '' ? t('edit.offline') : status
+          fail(t('edit.failed', { message: reason }))
+        }
+        function close() {
+          closeOverlay()
+          if (document.activeElement === textarea) textarea.blur()
+        }
+        cancel.addEventListener('click', close)
+        send.addEventListener('click', submit)
+        textarea.addEventListener('compositionstart', function () { composing = true })
+        textarea.addEventListener('compositionend', function () { composing = false })
+        textarea.addEventListener('keydown', function (event) {
+          if (event.isComposing || composing) return
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            close()
+            return
+          }
+          if (event.key !== 'Enter') return
+          if (event.metaKey || event.ctrlKey) {
+            event.preventDefault()
+            submit()
+            return
+          }
+          if (event.shiftKey || event.altKey) return
+          event.preventDefault()
+          submit()
+        })
+
+        document.body.appendChild(element)
+        element.restore = restore
+        element.reposition = reposition
+        overlay = element
+        window.addEventListener('resize', reposition)
+        reposition()
+        textarea.focus()
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+      }
+
+      fetch('/api/icex-fixer/branches?sessionId=' + encodeURIComponent(sessionId), {
+        credentials: 'same-origin',
+        headers: { accept: 'application/json' },
+      }).then(function (response) {
+        return response.json()
+      }).then(function (body) {
+        if (disposed || body === null || body.ok !== true || !Array.isArray(body.items)) return
+        for (const item of body.items) {
+          if (item !== null && typeof item === 'object' && Number.isSafeInteger(item.turn) && typeof item.childId === 'string') {
+            marks.set(item.turn, item.childId)
+          }
+        }
+        decorate()
+      }).catch(function () {
+        // An older Host half has no marker route; editing still works.
+      })
+
+      function relevant(record) {
+        const target = record.target
+        if (target instanceof Element) {
+          if (target.closest('[data-conversation-content]') !== null) return true
+          for (const node of record.addedNodes) {
+            if (node instanceof Element && (node.matches('[data-conversation-content]') || node.querySelector('[data-conversation-content]') !== null)) return true
+          }
+        }
+        return false
+      }
+
+      if (typeof MutationObserver === 'function') {
+        observer = new MutationObserver(function (records) {
+          for (const record of records) {
+            if (relevant(record)) {
+              schedule()
+              return
+            }
+          }
+        })
+        observer.observe(document.body, { childList: true, subtree: true })
+      }
+      window.addEventListener('resize', schedule)
+      decorate()
+
+      return function () {
+        disposed = true
+        if (frame !== 0) cancelAnimationFrame(frame)
+        if (observer !== null) observer.disconnect()
+        window.removeEventListener('resize', schedule)
+        closeOverlay()
+        const wraps = document.querySelectorAll('.' + EDIT_WRAP)
+        for (let index = 0; index < wraps.length; index += 1) wraps[index].remove()
+        const rows = document.querySelectorAll('.icex-edit-row')
+        for (let index = 0; index < rows.length; index += 1) rows[index].classList.remove('icex-edit-row')
+      }
+    }
+
+    /** Dock entry that owns the per-session bubble editor until the id changes. */
+    function EditBubbles(props) {
+      const sessionId = typeof props.sessionId === 'string' ? props.sessionId : ''
+      const t = translator(props.t)
+      const latest = useRef(t)
+      latest.current = t
+      useEffect(function () {
+        if (sessionId === '') return undefined
+        return installEditBubbles(sessionId, function (key, values) {
+          return latest.current(key, values)
+        })
+      }, [sessionId])
+      return null
+    }
+
     function apply(ctx) {
       runtimeContext = ctx
       ctx.effect(installStyles, 'icex-dsh-fixer: styles')
@@ -1268,6 +1726,14 @@ window.__ModuleLoader__.load({
           locale: NS,
         }, AnchorDock)
       })
+      ctx.slots.inject('conversation.composer.dock', function () {
+        return ctx.slots.register({
+          name: 'conversation.composer.dock',
+          id: 'icex-fixer-editor',
+          order: 41,
+          locale: NS,
+        }, EditBubbles)
+      })
       ctx.slots.inject('plugins.bundle.config', function () {
         return ctx.slots.register({
           name: 'plugins.bundle.config',
@@ -1299,6 +1765,9 @@ window.__ModuleLoader__.load({
         findUserRow: findUserRow,
         AnchorDock: AnchorDock,
         DeleteSessionItem: DeleteSessionItem,
+        EditBubbles: EditBubbles,
+        installEditBubbles: installEditBubbles,
+        pencilIcon: pencilIcon,
         BareModeSection: BareModeSection,
         bareStore: bareStore,
         readBare: readBare,

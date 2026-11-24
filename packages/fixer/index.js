@@ -7,6 +7,7 @@
  * key events and native window bounds are not available to a browser plugin.
  */
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -22,6 +23,7 @@ const helper = join(here, 'native', 'icex-summon')
 export function apply(ctx) {
   registerSessionDeleteRoute(ctx)
   registerBareModeRoute(ctx)
+  registerBranchRoute(ctx)
   if (process.platform !== 'darwin') return
   if (!existsSync(helper)) {
     console.warn('[icex-dsh-fixer] native summon helper is missing: ' + helper)
@@ -163,15 +165,260 @@ function registerSessionDeleteRoute(ctx) {
 }
 
 /*
- * Bare mode: turn every plugin off to show DSH as it ships, then turn them all
- * back on. Only bundle layers are deselected, so the Host services the app and
- * this plugin need stay mounted: dsh-base carries `pluginManager`, dsh-web-app
- * carries the stock Plugins page that the restore switch lives on, and this
- * bundle stays selected so its own switch survives. Before anything changes,
- * the enabled bundle names are written to a snapshot file; entering the mode
- * is therefore always reversible from the Plugins page, from a second browser,
- * and after a restart.
+ * Edit-and-resend: a sent user message can be rewritten from the browser. The
+ * session log is append-only, so the host forks the source session at the
+ * event just before that turn and prompts the child with the edited text; the
+ * original conversation is never mutated. A sidecar file remembers which turns
+ * already produced a branch so the bubble can keep a badge.
  */
+
+/** One user message may be long, but not unbounded. */
+const BRANCH_TEXT_LIMIT = 200000
+/** Session ids are file and route safe; reject anything else before reading. */
+const BRANCH_SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,200}$/
+/** Which turns already branched, per source session. */
+const BRANCH_STATE_FILE = join(DSH_HOME, 'fixer', 'branches.json')
+
+/** Read the branch marker store; a missing or unreadable file is empty state. */
+function readBranchState() {
+  let raw
+  try {
+    raw = readFileSync(BRANCH_STATE_FILE, 'utf8')
+  } catch (error) {
+    return { version: 1, items: {} }
+  }
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (error) {
+    return { version: 1, items: {} }
+  }
+  if (parsed === null || typeof parsed !== 'object' || parsed.version !== 1) return { version: 1, items: {} }
+  const items = parsed.items !== null && typeof parsed.items === 'object' ? parsed.items : {}
+  return { version: 1, items }
+}
+
+/** Write the marker store atomically so a crash cannot truncate it. */
+function writeBranchState(state) {
+  mkdirSync(dirname(BRANCH_STATE_FILE), { recursive: true })
+  const temp = BRANCH_STATE_FILE + '.' + String(process.pid) + '.tmp'
+  writeFileSync(temp, JSON.stringify(state, null, 2) + '\n')
+  renameSync(temp, BRANCH_STATE_FILE)
+}
+
+/** Markers for one source session, newest last; malformed entries are skipped. */
+function branchItems(sessionId) {
+  const state = readBranchState()
+  const list = state.items[sessionId]
+  if (!Array.isArray(list)) return []
+  return list.filter((item) => item !== null && typeof item === 'object'
+    && Number.isSafeInteger(item.turn)
+    && typeof item.childId === 'string'
+    && item.childId !== '')
+}
+
+/** Remember the branch created from one turn; a re-branch replaces the marker. */
+function recordBranch(sessionId, turn, childId, seq) {
+  const state = readBranchState()
+  const list = branchItems(sessionId).filter((item) => item.turn !== turn)
+  list.push({ turn, childId, seq, at: new Date().toISOString() })
+  state.items[sessionId] = list
+  writeBranchState(state)
+}
+
+/** One prompt part list as the original turn recorded it. */
+function readTurnPrompt(events, turn) {
+  let start = null
+  for (const event of events) {
+    if (event.type === 'turn/start' && event.data !== null && event.data.turn === turn) {
+      start = event
+      break
+    }
+  }
+  if (start === null) return { error: 'turn not found', code: 'turn-missing' }
+  let message = null
+  for (const event of events) {
+    if (event.seq <= start.seq) continue
+    if (event.type === 'turn/start') break
+    if (event.type === 'user/message' && event.surfaceOp !== 'replace'
+      && event.data !== null && event.data.source !== null && event.data.source.kind === 'user') {
+      message = event
+      break
+    }
+  }
+  if (message === null) return { error: 'this turn has no user message', code: 'message-missing' }
+  if (start.seq === 0) return { error: 'this turn has nothing before it to fork from', code: 'fork-unavailable' }
+  const content = Array.isArray(message.data?.content) ? message.data.content : []
+  const text = content
+    .filter((part) => part !== null && typeof part === 'object' && part.type === 'text' && typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('\n')
+  return { turn, seq: message.seq, atSeq: start.seq - 1, content, text }
+}
+
+/** Replace the original text while keeping images and other prompt parts. */
+function editedContent(content, text) {
+  const parts = []
+  let placed = false
+  for (const part of content) {
+    if (part !== null && typeof part === 'object' && part.type === 'text') {
+      if (placed === false) {
+        parts.push({ type: 'text', text })
+        placed = true
+      }
+      continue
+    }
+    parts.push(part)
+  }
+  if (placed === false) parts.unshift({ type: 'text', text })
+  return parts
+}
+
+/** Answer the GET half: the original text and the fork cut for one turn. */
+async function prepareBranch(request, ctx) {
+  const url = new URL(request.url, 'http://localhost')
+  const sessionId = url.searchParams.get('sessionId') ?? ''
+  const turn = Number(url.searchParams.get('turn'))
+  if (!BRANCH_SESSION_ID.test(sessionId)) return jsonResponse({ ok: false, error: 'sessionId is required' }, 400)
+  if (!Number.isSafeInteger(turn) || turn < 0) return jsonResponse({ ok: false, error: 'turn must be a non-negative integer' }, 400)
+  let query
+  try {
+    query = ctx.get('sessionQuery')
+  } catch (error) {
+    query = undefined
+  }
+  if (query === undefined || typeof query.readSession !== 'function') {
+    return jsonResponse({ ok: false, error: 'session history is unavailable', code: 'unavailable' }, 503)
+  }
+  let observed
+  try {
+    observed = await query.readSession(sessionId)
+  } catch (error) {
+    const message = String(error?.message ?? error)
+    const missing = error?.code === 'SESSION_QUERY_SESSION_NOT_FOUND'
+    return jsonResponse({ ok: false, error: missing ? 'session not found' : message, code: missing ? 'not-found' : 'read-failed' }, missing ? 404 : 500)
+  }
+  const prompt = readTurnPrompt(observed.events, turn)
+  if (prompt.error !== undefined) return jsonResponse({ ok: false, error: prompt.error, code: prompt.code }, 409)
+  return jsonResponse({ ok: true, turn, text: prompt.text, atSeq: prompt.atSeq })
+}
+
+/**
+ * Fork just before the edited turn, then prompt the child with the edited text.
+ * The source session is untouched; the child becomes the branch the browser
+ * opens next.
+ */
+async function createBranch(request, ctx) {
+  let body
+  try {
+    body = await request.json()
+  } catch (error) {
+    return jsonResponse({ ok: false, error: 'body is not JSON' }, 400)
+  }
+  const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : ''
+  const turn = body?.turn
+  const text = typeof body?.text === 'string' ? body.text : ''
+  if (!BRANCH_SESSION_ID.test(sessionId)) return jsonResponse({ ok: false, error: 'sessionId is required' }, 400)
+  if (!Number.isSafeInteger(turn) || turn < 0) return jsonResponse({ ok: false, error: 'turn must be a non-negative integer' }, 400)
+  if (text.trim() === '') return jsonResponse({ ok: false, error: 'text is required', code: 'empty' }, 400)
+  if (text.length > BRANCH_TEXT_LIMIT) return jsonResponse({ ok: false, error: 'text is too long', code: 'too-long' }, 400)
+
+  let query
+  let controller
+  try {
+    query = ctx.get('sessionQuery')
+    controller = ctx.get('sessionController')
+  } catch (error) {
+    // Checked below.
+  }
+  if (query === undefined || typeof query.readSession !== 'function') {
+    return jsonResponse({ ok: false, error: 'session history is unavailable', code: 'unavailable' }, 503)
+  }
+  if (controller === undefined || typeof controller.fork !== 'function') {
+    return jsonResponse({ ok: false, error: 'session controller is unavailable', code: 'unavailable' }, 503)
+  }
+
+  let observed
+  try {
+    observed = await query.readSession(sessionId)
+  } catch (error) {
+    const message = String(error?.message ?? error)
+    const missing = error?.code === 'SESSION_QUERY_SESSION_NOT_FOUND'
+    return jsonResponse({ ok: false, error: missing ? 'session not found' : message, code: missing ? 'not-found' : 'read-failed' }, missing ? 404 : 500)
+  }
+  const prompt = readTurnPrompt(observed.events, turn)
+  if (prompt.error !== undefined) {
+    return jsonResponse({ ok: false, error: prompt.error, code: prompt.code }, 409)
+  }
+
+  let childId
+  try {
+    const forked = await controller.fork({ sessionId, atSeq: prompt.atSeq })
+    childId = forked.sessionId
+    if (typeof childId !== 'string' || childId === '') throw new Error('fork returned no session id')
+  } catch (error) {
+    return jsonResponse({ ok: false, error: String(error?.message ?? error), code: 'fork-failed' }, 409)
+  }
+
+  try {
+    await controller.prompt({
+      sessionId: childId,
+      content: editedContent(prompt.content, text),
+      requestId: randomUUID(),
+    }, new AbortController().signal)
+  } catch (error) {
+    // The branch exists but has no edited message yet; report both facts so the
+    // browser can keep the editor open and surface the orphan id.
+    return jsonResponse({
+      ok: false,
+      error: String(error?.message ?? error),
+      code: 'prompt-failed',
+      sessionId: childId,
+    }, 500)
+  }
+
+  recordBranch(sessionId, turn, childId, prompt.seq)
+  return jsonResponse({ ok: true, sessionId: childId, turn, atSeq: prompt.atSeq })
+}
+
+/** Answer GET prepare and POST branch creation. */
+async function handleBranch(request, ctx) {
+  try {
+    return request.method === 'GET' ? await prepareBranch(request, ctx) : await createBranch(request, ctx)
+  } catch (error) {
+    console.warn('[icex-dsh-fixer] branch failed: ' + String(error?.message ?? error))
+    return jsonResponse({ ok: false, error: String(error?.message ?? error) }, 500)
+  }
+}
+
+/** Answer the branch markers for one source session. */
+async function handleBranchMarkers(request) {
+  const url = new URL(request.url, 'http://localhost')
+  const sessionId = url.searchParams.get('sessionId') ?? ''
+  if (!BRANCH_SESSION_ID.test(sessionId)) return jsonResponse({ ok: false, error: 'sessionId is required' }, 400)
+  return jsonResponse({ ok: true, items: branchItems(sessionId) })
+}
+
+/** Claim the branch routes. */
+function registerBranchRoute(ctx) {
+  ctx.inject(['connection'], (scope) => {
+    const connection = scope.connection
+    if (connection === undefined || connection.fetch === undefined || typeof connection.fetch.register !== 'function') return
+    scope.effect(() => connection.fetch.register({
+      path: '/api/icex-fixer/branch',
+      methods: ['GET', 'POST'],
+      requestBody: 'buffered',
+      fetch: (request) => handleBranch(request, scope),
+    }), 'icex-dsh-fixer: branch route')
+    scope.effect(() => connection.fetch.register({
+      path: '/api/icex-fixer/branches',
+      methods: ['GET'],
+      requestBody: 'buffered',
+      fetch: (request) => handleBranchMarkers(request),
+    }), 'icex-dsh-fixer: branch markers route')
+  })
+}
+
 
 /** Bundles bare mode never turns off; the plugin manager also refuses two of them. */
 const BARE_PROTECTED = new Set(['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'icex-dsh-fixer'])
@@ -439,4 +686,15 @@ apply.__test = {
   writeBareState,
   clearBareState,
   BARE_STATE_FILE,
+  readTurnPrompt,
+  editedContent,
+  prepareBranch,
+  createBranch,
+  handleBranch,
+  handleBranchMarkers,
+  readBranchState,
+  writeBranchState,
+  recordBranch,
+  branchItems,
+  BRANCH_STATE_FILE,
 }

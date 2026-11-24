@@ -4,7 +4,7 @@
 
 | 包 | 作用 | 形态 |
 | --- | --- | --- |
-| [`packages/fixer`](packages/fixer) `icex-dsh-fixer` | 左侧输入锚点导航 + 双击右 Option 唤起窗口 | Web 客户端 + 原生 helper |
+| [`packages/fixer`](packages/fixer) `icex-dsh-fixer` | 左侧输入锚点导航、编辑已发消息并分支重发、双击右 Option 唤起窗口 | Web 客户端 + 原生 helper |
 | [`packages/memory`](packages/memory) `icex-dsh-memory` | 跨会话记忆：开场注入摘要 + `memory` 工具 | Host 插件，无依赖 |
 
 ## 安装
