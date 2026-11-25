@@ -8,7 +8,7 @@
  * behaviour instead of being re-implemented here.
  */
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
@@ -25,11 +25,23 @@ const CATALOG = [
 const DSH_HOME = process.env.DSH_HOME && process.env.DSH_HOME !== '' ? process.env.DSH_HOME : join(homedir(), '.dsh')
 const CONFIG_FILE = join(DSH_HOME, 'plugin-center', 'config.json')
 const STATS_FILE = join(DSH_HOME, 'plugin-center', 'stats.json')
+const HOST_LOG = join(DSH_HOME, 'plugin-center', 'host.log')
 const FIRST_DELAY_MS = 20_000
 const REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000
 const REPORT_TIMEOUT_MS = 10_000
 const MIN_INTERVAL_HOURS = 1
 const MAX_INTERVAL_HOURS = 168
+
+/** Append a boot/diagnostic line; never throws, and rotates past 128 KB. */
+function logHost(line) {
+  try {
+    mkdirSync(dirname(HOST_LOG), { recursive: true })
+    if (existsSync(HOST_LOG) && statSync(HOST_LOG).size > 128 * 1024) writeFileSync(HOST_LOG, '')
+    appendFileSync(HOST_LOG, `${new Date().toISOString()} ${line}\n`)
+  } catch (error) {
+    // Diagnostics must never break the plugin.
+  }
+}
 
 /** One JSON response with no-store caching. */
 function jsonResponse(body, status = 200) {
@@ -538,20 +550,38 @@ async function autoUpdatePass(manager) {
  * @param ctx - owning Cordis context.
  */
 export function apply(ctx) {
-  ctx.effect(
-    () => (ctx.reflect ?? ctx).provide('icexStats', { record: recordUsage }),
-    'icex-plugin-center: stats service',
-  )
+  logHost('apply start')
+  try {
+    ctx.effect(
+      () => (ctx.reflect ?? ctx).provide('icexStats', { record: recordUsage }),
+      'icex-plugin-center: stats service',
+    )
+    logHost('icexStats service provided')
+  } catch (error) {
+    // Usage counters stay local if the Host cannot expose the service.
+  }
 
-  ctx.inject(['connection', 'pluginManager'], (scope) => {
+  try {
+  ctx.inject(['connection'], (scope) => {
+    logHost('connection scope ready')
     const connection = scope.connection
-    const manager = scope.pluginManager
+    const resolveManager = () => {
+      const manager = typeof scope.get === 'function' ? scope.get('pluginManager') : undefined
+      if (manager === undefined || manager === null) throw new Error('pluginManager service is not available')
+      return manager
+    }
+
+    scope.effect(
+      () => route(connection, '/api/icex-plugin-center/ping', 'GET', async () => jsonResponse({ ok: true })),
+      'icex-plugin-center: ping route',
+    )
+    logHost('routes registered')
 
     scope.effect(
       () =>
         route(connection, '/api/icex-plugin-center/state', 'GET', async () => {
           try {
-            return jsonResponse(await readState(manager))
+            return jsonResponse(await readState(resolveManager()))
           } catch (error) {
             return jsonResponse({ ok: false, code: 'state-failed', message: String(error) }, 500)
           }
@@ -565,7 +595,7 @@ export function apply(ctx) {
           if (busy) return jsonResponse({ ok: false, code: 'busy', message: '另一个插件操作正在进行，请稍后再试。' }, 409)
           busy = true
           try {
-            const check = await checkAll(manager)
+            const check = await checkAll(resolveManager())
             recordCheck({ at: new Date().toISOString(), automatic: false, ...check, results: [] })
             recordManager('check')
             return jsonResponse({ ok: true, ...check })
@@ -586,7 +616,7 @@ export function apply(ctx) {
           if (!own(name)) return jsonResponse({ ok: false, code: 'invalid-name', message: '不是 icex 插件。' }, 400)
           if (name === SELF) return jsonResponse({ ok: false, code: 'self', message: '插件中心不需要安装自己。' }, 400)
           return exclusive(async () => {
-            const result = await installOne(manager, name)
+            const result = await installOne(resolveManager(), name)
             recordManager('install')
             return result
           })
@@ -601,7 +631,7 @@ export function apply(ctx) {
           const name = String(body.name ?? '')
           if (!own(name)) return jsonResponse({ ok: false, code: 'invalid-name', message: '不是 icex 插件。' }, 400)
           return exclusive(async () => {
-            const result = await updateOne(manager, name)
+            const result = await updateOne(resolveManager(), name)
             recordManager('update')
             return result
           })
@@ -617,7 +647,7 @@ export function apply(ctx) {
           if (!own(name)) return jsonResponse({ ok: false, code: 'invalid-name', message: '不是 icex 插件。' }, 400)
           if (name === SELF) return jsonResponse({ ok: false, code: 'self', message: '不能移除正在使用的插件中心。' }, 400)
           return exclusive(async () => {
-            const result = await manager.removeBundle(name)
+            const result = await resolveManager().removeBundle(name)
             recordManager('remove')
             return result
           })
@@ -636,7 +666,7 @@ export function apply(ctx) {
             return jsonResponse({ ok: false, code: 'self', message: '请从官方插件页停用插件中心。' }, 400)
           }
           return exclusive(async () => {
-            const result = await manager.setBundleEnabled(name, enabled)
+            const result = await resolveManager().setBundleEnabled(name, enabled)
             recordManager('toggle')
             return result
           })
@@ -668,7 +698,7 @@ export function apply(ctx) {
     scope.effect(
       () =>
         route(connection, '/api/icex-plugin-center/report', 'POST', async () => {
-          const result = await reportNow(manager, { automatic: false })
+          const result = await reportNow(resolveManager(), { automatic: false })
           return jsonResponse(result, result.ok === true ? 200 : 400)
         }),
       'icex-plugin-center: report route',
@@ -722,7 +752,7 @@ export function apply(ctx) {
       const run = async () => {
         if (disposed) return
         try {
-          await autoUpdatePass(manager)
+          await autoUpdatePass(resolveManager())
         } catch (error) {
           // A failed pass is recorded inside autoUpdatePass; never stop the timer.
         }
@@ -745,7 +775,7 @@ export function apply(ctx) {
         try {
           const telemetry = readConfig().telemetry
           if (telemetry.enabled === true && telemetry.endpoint !== '' && reportDue()) {
-            await reportNow(manager, { automatic: true })
+            await reportNow(resolveManager(), { automatic: true })
           }
         } catch (error) {
           // Reporting is best effort and must never break the page.
@@ -760,6 +790,10 @@ export function apply(ctx) {
       }
     }, 'icex-plugin-center: anonymous reporting')
   })
+  logHost('timers armed')
+  } catch (error) {
+    logHost(`inject failed: ${String(error)}`)
+  }
 }
 
 export const __test = {

@@ -187,15 +187,16 @@ await check('autoUpdatePass does nothing while auto update is off', async () => 
   assert.equal(manager.calls.updateBundle.length, 0)
 })
 
-await check('apply provides the stats service and waits for the manager', () => {
+function runApplyForRoutes() {
   const provided = []
   const injected = []
-  let disposed = 0
+  const paths = []
+  const handlers = new Map()
+  const disposers = []
   const ctx = {
     effect: (fn) => {
       const dispose = fn()
       return () => {
-        disposed += 1
         if (typeof dispose === 'function') dispose()
       }
     },
@@ -205,14 +206,57 @@ await check('apply provides the stats service and waits for the manager', () => 
         return () => {}
       },
     },
+    get: () => undefined,
     inject: (deps, run) => {
       injected.push(deps)
+      const scope = {
+        connection: { fetch: { register: (options) => { paths.push(options.path); handlers.set(options.path, options.fetch); return () => {} } } },
+        effect: (fn) => {
+          const dispose = fn()
+          disposers.push(dispose)
+          return () => {
+            if (typeof dispose === 'function') dispose()
+          }
+        },
+        get: () => ({ listBundles: async () => [] }),
+      }
+      run(scope)
     },
   }
   host.apply(ctx)
-  assert.deepEqual(provided.map((item) => item.name), ['icexStats'])
-  assert.equal(typeof provided[0].value.record, 'function')
-  assert.deepEqual(injected, [['connection', 'pluginManager']])
+  return {
+    provided,
+    injected,
+    paths,
+    handlers,
+    cleanup: () => { for (const dispose of disposers) if (typeof dispose === 'function') dispose() },
+  }
+}
+
+await check('apply provides stats and registers routes with only the connection service', () => {
+  const result = runApplyForRoutes()
+  try {
+    assert.deepEqual(result.provided.map((item) => item.name), ['icexStats'])
+    assert.equal(typeof result.provided[0].value.record, 'function')
+    assert.deepEqual(result.injected, [['connection']])
+    assert.ok(result.paths.includes('/api/icex-plugin-center/ping'))
+    assert.ok(result.paths.includes('/api/icex-plugin-center/state'))
+    assert.ok(result.paths.includes('/api/icex-plugin-center/stats'))
+  } finally {
+    result.cleanup()
+  }
+})
+
+await check('check route executes with a lazily resolved plugin manager', async () => {
+  const result = runApplyForRoutes()
+  try {
+    const response = await result.handlers.get('/api/icex-plugin-center/check')({})
+    assert.equal(response.status, 200)
+    const body = await response.json()
+    assert.equal(body.ok, true)
+  } finally {
+    result.cleanup()
+  }
 })
 
 await check('stats start empty with a random install id', () => {
