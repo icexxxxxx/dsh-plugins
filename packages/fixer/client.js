@@ -1144,13 +1144,12 @@ window.__ModuleLoader__.load({
       '.icex-tip-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 18px; }',
       'html[data-icex-fixer-hide-native-rail][data-icex-fixer-rail-mounted] [data-conversation-content] nav[aria-label] { display: none !important; }',
       '@media (prefers-reduced-motion: reduce) { .icex-rail-dot { transition: none; } .icex-rail-btn[data-busy] .icex-rail-dot { animation: none; } }',
-      '.icex-edit-row { position: relative; }',
-      '.icex-edit-wrap { position: absolute; z-index: 3; display: inline-flex; align-items: center; gap: 4px; pointer-events: none; }',
-      '.icex-edit-pencil { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; opacity: 0; transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease; }',
-      '.icex-edit-row:hover .icex-edit-pencil, .icex-edit-pencil:focus-visible { opacity: 1; }',
-      '.icex-edit-pencil:hover { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }',
+      '.icex-edit-wrap { display: inline-flex; align-items: center; gap: 6px; }',
+      '.icex-edit-pencil { display: inline-flex; align-items: center; justify-content: center; width: calc(28px + var(--dsh-content-font-delta, 0px)); height: calc(28px + var(--dsh-content-font-delta, 0px)); padding: 6px; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }',
+      '.icex-edit-pencil svg { width: calc(15px + var(--dsh-content-font-delta, 0px)); height: calc(15px + var(--dsh-content-font-delta, 0px)); }',
+      '.icex-edit-pencil:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }',
       '.icex-edit-pencil:disabled { opacity: 0.4; cursor: default; }',
-      '.icex-edit-badge { pointer-events: auto; height: 18px; padding: 0 7px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); font: inherit; font-size: 10px; line-height: 18px; cursor: pointer; }',
+      '.icex-edit-badge { height: 20px; padding: 0 8px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 16%, transparent); color: var(--dsw-alias-state-business-primary); font: inherit; font-size: 11px; line-height: 20px; cursor: pointer; }',
       '.icex-edit-badge:hover { background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 26%, transparent); }',
       '.icex-edit-overlay { position: fixed; z-index: 60; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--dsw-alias-state-business-primary); border-radius: var(--dsw-radius-lg); background: var(--dsw-specific-menu); box-shadow: var(--dsw-elevation-panel); }',
       '.icex-edit-textarea { box-sizing: border-box; width: 100%; min-height: 64px; max-height: 44vh; padding: 0; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 14px; line-height: 22px; resize: vertical; outline: none; }',
@@ -1342,16 +1341,11 @@ window.__ModuleLoader__.load({
         return scoped !== null ? scoped : document.querySelector('[data-conversation-scroll]')
       }
 
-      function place(row) {
-        const wrap = row.querySelector(':scope > .' + EDIT_WRAP)
-        const bubble = row.querySelector('[data-message-bubble]')
-        if (wrap === null || bubble === null) return
-        const rowRect = row.getBoundingClientRect()
-        const bubbleRect = bubble.getBoundingClientRect()
-        if (bubbleRect.width <= 0) return
-        const width = wrap.getBoundingClientRect().width
-        wrap.style.left = Math.max(0, Math.round(bubbleRect.right - rowRect.left - width)) + 'px'
-        wrap.style.top = Math.max(0, Math.round(bubbleRect.bottom - rowRect.top + 2)) + 'px'
+      /** The native copy/clock row below the bubble owns icon spacing and hover. */
+      function actionsSlot(row, bubble) {
+        const slot = row.querySelector('[data-clock="start"]')
+        if (slot === null || slot === bubble) return null
+        return slot
       }
 
       /** Keep the badge in sync with the marker map (a turn can be edited twice). */
@@ -1371,7 +1365,7 @@ window.__ModuleLoader__.load({
         wrap.insertBefore(badge, wrap.firstChild)
       }
 
-      function buildWrap(turn, row, bubble) {
+      function buildWrap(turn, row, bubble, slot) {
         const wrap = document.createElement('span')
         wrap.className = EDIT_WRAP
         const pencil = document.createElement('button')
@@ -1385,6 +1379,7 @@ window.__ModuleLoader__.load({
         })
         wrap.appendChild(pencil)
         syncBadge(wrap, turn)
+        slot.appendChild(wrap)
         return wrap
       }
 
@@ -1400,16 +1395,15 @@ window.__ModuleLoader__.load({
           if (!Number.isSafeInteger(turn) || seen.has(turn)) continue
           const bubble = row.querySelector('[data-message-bubble]')
           if (bubble === null || (bubble.textContent ?? '').trim() === '') continue
+          const slot = actionsSlot(row, bubble)
+          if (slot === null) continue
           seen.add(turn)
-          const existing = row.querySelector(':scope > .' + EDIT_WRAP)
+          const existing = row.querySelector('.' + EDIT_WRAP)
           if (existing !== null) {
             syncBadge(existing, turn)
-            place(row)
             continue
           }
-          row.classList.add('icex-edit-row')
-          row.appendChild(buildWrap(turn, row, bubble))
-          place(row)
+          buildWrap(turn, row, bubble, slot)
         }
       }
 

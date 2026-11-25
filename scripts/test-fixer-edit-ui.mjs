@@ -108,6 +108,8 @@ class El {
     if (selector.startsWith('.') && !selector.includes(' ')) return this.classList.contains(selector.slice(1))
     if (selector === '[data-message-bubble]') return this.attrs['data-message-bubble'] !== undefined
     if (selector === '.icex-edit-badge') return this.classList.contains('icex-edit-badge')
+    if (selector === 'button') return this.tagName === 'button'
+    if (selector === '[data-clock="start"]') return this.attrs['data-clock'] === 'start'
     if (selector === '.icex-edit-wrap') return this.classList.contains('icex-edit-wrap')
     if (selector === '.icex-edit-row') return this.classList.contains('icex-edit-row')
     if (selector === '[data-conversation-content]') return this.attrs['data-conversation-content'] !== undefined
@@ -170,9 +172,15 @@ function addRow(turn, text) {
   bubble.textContent = text
   bubble.rect = { left: 400, top: 105 + turn * 80, right: 700, bottom: 135 + turn * 80, width: 300, height: 30 }
   row.appendChild(bubble)
+  const actions = new El('span')
+  actions.setAttribute('data-clock', 'start')
+  const copy = new El('button')
+  copy.setAttribute('aria-label', '复制')
+  actions.appendChild(copy)
+  row.appendChild(actions)
   scroller.appendChild(row)
-  rows.push({ row, bubble })
-  return { row, bubble }
+  rows.push({ row, bubble, actions, copy })
+  return { row, bubble, actions, copy }
 }
 addRow(1, 'old question')
 
@@ -249,6 +257,10 @@ const wrap = rows[0].row.querySelector('.icex-edit-wrap')
 check('decorates the user row', wrap !== null && wrap.classList.contains('icex-edit-wrap'))
 const pencil = wrap?.children.find((child) => child.classList.contains('icex-edit-pencil'))
 check('adds a pencil', pencil !== undefined)
+check('pencil joins the native action row', wrap?.parent === rows[0].actions)
+check('pencil follows the copy button in that row', rows[0].actions.children.indexOf(wrap) === rows[0].actions.children.indexOf(rows[0].copy) + 1)
+check('pencil uses the native 28px/15px action sizing', source.includes('width: calc(28px + var(--dsh-content-font-delta, 0px)); height: calc(28px + var(--dsh-content-font-delta, 0px)); padding: 6px;')
+  && source.includes('.icex-edit-pencil svg { width: calc(15px'))
 const initialFetches = state.fetches.length
 check('loads the markers once', initialFetches === 1 && state.fetches[0].url === '/api/icex-fixer/branches?sessionId=session-a', JSON.stringify(state.fetches.map((item) => item.url)))
 
