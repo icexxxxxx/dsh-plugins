@@ -29,7 +29,13 @@ dsh plugin --profile desktop add icex-dsh-fixer
 
 ## 各自的数据
 
-- `plugin-center`：配置在 `~/.dsh/plugin-center/config.json`（自动更新开关、间隔、各包勾选状态、上次检查结果）。
+- `plugin-center`：配置在 `~/.dsh/plugin-center/config.json`（自动更新开关、间隔、各包勾选状态、上次检查结果、匿名上报开关/地址/昵称）；本机计数在 `~/.dsh/plugin-center/stats.json`。
+
+## 使用统计（可选）
+
+插件中心有一个「使用统计」区块：默认只在本机记录安装、更新、页面打开，以及 fixer 的分支重发、memory 的候选/注入次数。打开「匿名上报」并填入接收地址后，才会每天发送一次聚合快照（随机 install id、版本、平台、启用状态、功能次数、可选昵称）；不含 prompt、路径、会话内容或设备名。
+
+接收端代码在 [`cloudflare/`](cloudflare)：Cloudflare Worker + D1，部署一次即可，自带 `/v1/stats` JSON 接口和一个输入 token 才能查看的聚合看板。部署步骤见 [`cloudflare/README.md`](cloudflare/README.md)。
 - `fixer`：设置存在浏览器 `localStorage`；原生 helper 的日志在 `/tmp/icex-dsh-fixer-summon-<uid>.log`。
 - `memory`：`~/.dsh/memory/MEMORY.md`（全局）和 `<cwd>/.dsh/memory/MEMORY.md`（项目），纯 Markdown，可手改、可版本化。
 

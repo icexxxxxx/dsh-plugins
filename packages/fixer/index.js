@@ -378,6 +378,11 @@ async function createBranch(request, ctx) {
   }
 
   recordBranch(sessionId, turn, childId, prompt.seq)
+  try {
+    ctx.get('icexStats')?.record?.('icex-dsh-fixer', 'branch')
+  } catch (error) {
+    // Usage counting is optional; never fail a branch over it.
+  }
   return jsonResponse({ ok: true, sessionId: childId, turn, atSeq: prompt.atSeq })
 }
 

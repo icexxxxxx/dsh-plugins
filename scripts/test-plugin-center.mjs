@@ -12,9 +12,9 @@ const home = mkdtempSync(join(tmpdir(), 'icex-plugin-center-'))
 process.env.DSH_HOME = home
 
 let passed = 0
-function check(name, run) {
+async function check(name, run) {
   try {
-    run()
+    await run()
     passed += 1
     console.log('PASS ' + name)
   } catch (error) {
@@ -26,7 +26,7 @@ function check(name, run) {
 const host = await import('../packages/plugin-center/index.js')
 const t = host.__test
 
-check('interval is clamped and unknown packages are dropped', () => {
+await check('interval is clamped and unknown packages are dropped', () => {
   const config = t.normaliseConfig({
     autoUpdate: { enabled: true, intervalHours: 0, packages: { 'icex-dsh-fixer': true, evil: true, 'icex-dsh-memory': false } },
   })
@@ -37,7 +37,7 @@ check('interval is clamped and unknown packages are dropped', () => {
   assert.equal(t.normaliseConfig(null).autoUpdate.enabled, false)
 })
 
-check('only icex packages are managed', () => {
+await check('only icex packages are managed', () => {
   assert.equal(t.own('icex-dsh-fixer'), true)
   assert.equal(t.own('dshmarket'), false)
   assert.equal(t.own(undefined), false)
@@ -77,7 +77,7 @@ const installed = [
   { name: 'dshmarket', installed: true, enabled: true, update: 'registry', version: '1.80.0' },
 ]
 
-check('checkAll skips incompatible and non-icex versions', async () => {
+await check('checkAll skips incompatible and non-icex versions', async () => {
   const manager = fakeManager({
     bundles: installed,
     versions: {
@@ -96,14 +96,14 @@ check('checkAll skips incompatible and non-icex versions', async () => {
   assert.equal(result.checked, 1)
 })
 
-check('checkAll records one package failure without throwing', async () => {
+await check('checkAll records one package failure without throwing', async () => {
   const manager = fakeManager({ bundles: installed, versions: {} })
   const result = await t.checkAll(manager)
   assert.deepEqual(Object.keys(result.updates), [])
   assert.match(result.failed['icex-dsh-fixer'], /offline/)
 })
 
-check('updateOne passes the registry and a request id', async () => {
+await check('updateOne passes the registry and a request id', async () => {
   const manager = fakeManager({
     bundles: installed,
     versions: { 'icex-dsh-fixer': [{ version: '0.3.12', bundle: true }] },
@@ -117,19 +117,19 @@ check('updateOne passes the registry and a request id', async () => {
   assert.match(manager.calls.updateBundle[0].options.requestId, /^[0-9a-f-]{36}$/)
 })
 
-check('updateOne reports current when nothing newer exists', async () => {
+await check('updateOne reports current when nothing newer exists', async () => {
   const manager = fakeManager({ bundles: installed, versions: { 'icex-dsh-fixer': [] } })
   const result = await t.updateOne(manager, 'icex-dsh-fixer')
   assert.deepEqual(result, { status: 'current', version: '0.3.11' })
   assert.equal(manager.calls.updateBundle.length, 0)
 })
 
-check('updateOne refuses a bundle that is not installed', async () => {
+await check('updateOne refuses a bundle that is not installed', async () => {
   const manager = fakeManager({ bundles: installed })
   await assert.rejects(() => t.updateOne(manager, 'icex-dsh-memory'), /尚未安装/)
 })
 
-check('installOne passes enabled and a request id', async () => {
+await check('installOne passes enabled and a request id', async () => {
   const manager = fakeManager({ bundles: installed, versions: {} })
   const result = await t.installOne(manager, 'icex-dsh-memory')
   assert.equal(result.application, 'restart-required')
@@ -138,12 +138,12 @@ check('installOne passes enabled and a request id', async () => {
   assert.match(manager.calls.installBundle[0].options.requestId, /^[0-9a-f-]{36}$/)
 })
 
-check('installOne refuses an already installed bundle', async () => {
+await check('installOne refuses an already installed bundle', async () => {
   const manager = fakeManager({ bundles: installed })
   await assert.rejects(() => t.installOne(manager, 'icex-dsh-fixer'), /已经安装/)
 })
 
-check('readState lists the catalog first and marks absent entries', async () => {
+await check('readState lists the catalog first and marks absent entries', async () => {
   const manager = fakeManager({ bundles: installed })
   const state = await t.readState(manager)
   assert.equal(state.ok, true)
@@ -157,7 +157,7 @@ check('readState lists the catalog first and marks absent entries', async () => 
   assert.equal(state.bundles.find((item) => item.name === 'icex-dsh-plugin-center').self, true)
 })
 
-check('autoUpdatePass updates only enabled packages and records the check', async () => {
+await check('autoUpdatePass updates only enabled packages and records the check', async () => {
   t.writeConfig({
     version: 1,
     autoUpdate: { enabled: true, intervalHours: 6, packages: { 'icex-dsh-fixer': true } },
@@ -180,11 +180,117 @@ check('autoUpdatePass updates only enabled packages and records the check', asyn
   assert.equal(saved.lastCheck.updates['icex-dsh-fixer'].latest, '0.3.12')
 })
 
-check('autoUpdatePass does nothing while auto update is off', async () => {
+await check('autoUpdatePass does nothing while auto update is off', async () => {
   t.writeConfig({ version: 1, autoUpdate: { enabled: false, intervalHours: 6, packages: { 'icex-dsh-fixer': true } }, lastCheck: null })
   const manager = fakeManager({ bundles: installed })
   assert.equal(await t.autoUpdatePass(manager), null)
   assert.equal(manager.calls.updateBundle.length, 0)
+})
+
+await check('apply provides the stats service and waits for the manager', () => {
+  const provided = []
+  const injected = []
+  let disposed = 0
+  const ctx = {
+    effect: (fn) => {
+      const dispose = fn()
+      return () => {
+        disposed += 1
+        if (typeof dispose === 'function') dispose()
+      }
+    },
+    reflect: {
+      provide: (name, value) => {
+        provided.push({ name, value })
+        return () => {}
+      },
+    },
+    inject: (deps, run) => {
+      injected.push(deps)
+    },
+  }
+  host.apply(ctx)
+  assert.deepEqual(provided.map((item) => item.name), ['icexStats'])
+  assert.equal(typeof provided[0].value.record, 'function')
+  assert.deepEqual(injected, [['connection', 'pluginManager']])
+})
+
+await check('stats start empty with a random install id', () => {
+  t.resetStats()
+  const stats = t.defaultStats()
+  assert.match(stats.installId, /^[0-9a-f-]{36}$/)
+  assert.equal(stats.manager.pageOpen, 0)
+  assert.deepEqual(stats.plugins, {})
+})
+
+await check('recordUsage counts features and manager actions', () => {
+  t.resetStats()
+  assert.equal(t.recordUsage('icex-dsh-fixer', 'branch'), true)
+  assert.equal(t.recordUsage('icex-dsh-fixer', 'branch'), true)
+  assert.equal(t.recordUsage('icex-dsh-memory', 'digest'), true)
+  assert.equal(t.recordUsage('other-plugin', 'branch'), false)
+  assert.equal(t.recordUsage('icex-dsh-fixer', 'bad event!'), false)
+  assert.equal(t.recordManager('pageOpen'), true)
+  assert.equal(t.recordManager('unknown'), false)
+  const stats = t.statsSnapshot()
+  assert.equal(stats.plugins['icex-dsh-fixer'].counts.branch, 2)
+  assert.equal(stats.plugins['icex-dsh-memory'].counts.digest, 1)
+  assert.equal(stats.manager.pageOpen, 1)
+  assert.ok(stats.days.length >= 1)
+  assert.equal(stats.days.at(-1).total, 4)
+})
+
+await check('telemetry config validates endpoint and trims nickname', () => {
+  const config = t.normaliseConfig({
+    telemetry: { enabled: true, endpoint: 'ftp://bad', nickname: ' 小明 ', decidedAt: '2026-11-25' },
+  })
+  assert.equal(config.telemetry.enabled, true)
+  assert.equal(config.telemetry.endpoint, '')
+  assert.equal(config.telemetry.nickname, '小明')
+  const good = t.normaliseConfig({ telemetry: { endpoint: 'https://example.workers.dev/v1/report' } })
+  assert.equal(good.telemetry.endpoint, 'https://example.workers.dev/v1/report')
+})
+
+await check('reportNow sends the aggregate snapshot once reporting is on', async () => {
+  t.resetStats()
+  t.recordUsage('icex-dsh-fixer', 'branch', 2)
+  const manager = fakeManager({ bundles: installed })
+  let captured = null
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (url, init) => {
+    captured = { url, body: JSON.parse(init.body) }
+    return new Response('{}', { status: 202 })
+  }
+  try {
+    t.writeConfig({
+      version: 1,
+      autoUpdate: { enabled: false, intervalHours: 6, packages: {} },
+      telemetry: { enabled: true, endpoint: 'https://example.workers.dev/v1/report', nickname: 'icex', decidedAt: null },
+      lastCheck: null,
+    })
+    const result = await t.reportNow(manager, { automatic: false })
+    assert.equal(result.ok, true)
+    assert.equal(result.status, 202)
+    assert.equal(captured.url, 'https://example.workers.dev/v1/report')
+    assert.equal(captured.body.schema, 1)
+    assert.equal(captured.body.installId, t.readStats().installId)
+    assert.equal(captured.body.nickname, 'icex')
+    assert.equal(captured.body.plugins.find((item) => item.name === 'icex-dsh-fixer').counts.branch, 2)
+    assert.equal(captured.body.automatic, false)
+    assert.equal(t.readStats().lastReport.status, 202)
+    assert.equal(t.reportDue(), false)
+  } finally {
+    globalThis.fetch = realFetch
+  }
+})
+
+await check('reportNow refuses when disabled or without an endpoint', async () => {
+  t.resetStats()
+  t.writeConfig({ version: 1, autoUpdate: { enabled: false, intervalHours: 6, packages: {} }, telemetry: { enabled: false }, lastCheck: null })
+  const manager = fakeManager({ bundles: installed })
+  assert.equal((await t.reportNow(manager)).code, 'disabled')
+  t.writeConfig({ version: 1, autoUpdate: { enabled: false, intervalHours: 6, packages: {} }, telemetry: { enabled: true, endpoint: '' }, lastCheck: null })
+  assert.equal((await t.reportNow(manager)).code, 'no-endpoint')
 })
 
 // ---- client helpers, loaded through a stub module factory -------------------
@@ -213,7 +319,7 @@ await import('../packages/plugin-center/client.js')
 delete globalThis.window
 delete globalThis.__ICEX_PLUGIN_CENTER_TEST__
 
-check('client helpers format names and status', () => {
+await check('client helpers format names and status', () => {
   const c = clientPlugin.__test
   assert.equal(c.shortName('icex-dsh-fixer'), 'Fixer')
   assert.equal(c.shortName('icex-dsh-plugin-center'), 'Plugin Center')
@@ -224,7 +330,7 @@ check('client helpers format names and status', () => {
   assert.equal(c.patchConfig({ autoUpdate: { enabled: false, intervalHours: 6, packages: {} } }, { packages: { x: true } }).autoUpdate.packages.x, true)
 })
 
-check('client registers the sidebar entry and the main page', () => {
+await check('client registers the sidebar entry and the main page', () => {
   const registrations = []
   const injected = []
   const ctx = {
@@ -249,9 +355,9 @@ check('client registers the sidebar entry and the main page', () => {
   assert.equal(registrations[1].id, 'icex-plugins')
 })
 
-check('client styles define the page and switch surfaces', () => {
+await check('client styles define the page and switch surfaces', () => {
   const css = clientPlugin.__test.STYLE_LINES.join('\n')
-  for (const selector of ['.icex-pc', '.icex-pc-card', '.icex-pc-switch', '.icex-pc-btn-primary', '.icex-pc-toast']) {
+  for (const selector of ['.icex-pc', '.icex-pc-card', '.icex-pc-switch', '.icex-pc-btn-primary', '.icex-pc-toast', '.icex-pc-stats', '.icex-pc-report']) {
     assert.ok(css.includes(selector), 'missing ' + selector)
   }
 })

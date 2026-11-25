@@ -1,0 +1,11 @@
+name = "icex-plugin-stats"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "icex-plugin-stats"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Deploy secrets instead of putting them here:
+#   wrangler secret put ADMIN_TOKEN

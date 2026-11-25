@@ -69,6 +69,37 @@ window.__ModuleLoader__.load({
       error: 'Something went wrong',
       loadFailed: 'Could not read the plugin list',
       unavailable: 'The plugin manager is not available in this profile.',
+      statsTitle: 'Usage',
+      statsHint: 'Counts are local unless anonymous reporting is on.',
+      installId: 'Install ID',
+      pageOpens: 'Page opens',
+      localPlugins: 'Plugin activity',
+      noActivity: 'No activity yet.',
+      reportTitle: 'Anonymous reporting',
+      reportHint:
+        'Shares counts only: install ID, DSH and plugin versions, platform, enabled plugins, feature counts. No prompts, paths, session text or device name.',
+      endpoint: 'Endpoint',
+      endpointPlaceholder: 'https://example.workers.dev/v1/report',
+      nickname: 'Nickname (optional)',
+      save: 'Save',
+      saved: 'Saved.',
+      sendNow: 'Send now',
+      sending: 'Sending…',
+      lastReport: 'Last report',
+      neverReported: 'Not sent yet',
+      reportOk: 'Sent (HTTP {status}).',
+      consent: 'Send anonymous usage counts',
+      ev_branch: 'Branch',
+      ev_capture: 'Candidate',
+      ev_digest: 'Digest',
+      ev_promote: 'Promoted',
+      ev_pageOpen: 'Page open',
+      ev_check: 'Check',
+      ev_install: 'Install',
+      ev_update: 'Update',
+      ev_remove: 'Remove',
+      ev_toggle: 'Toggle',
+      ev_report: 'Report',
     }
 
     const zh = {
@@ -112,6 +143,37 @@ window.__ModuleLoader__.load({
       error: '出错了',
       loadFailed: '读取插件列表失败',
       unavailable: '当前 profile 没有可用的插件管理器。',
+      statsTitle: '使用统计',
+      statsHint: '默认只记在本机；开启匿名上报后才会发送计数。',
+      installId: '安装 ID',
+      pageOpens: '页面打开',
+      localPlugins: '插件活动',
+      noActivity: '还没有记录。',
+      reportTitle: '匿名上报',
+      reportHint:
+        '只发送计数：安装 ID、DSH 与插件版本、平台、启用状态和功能次数。不发送 prompt、文件路径、会话内容或设备名。',
+      endpoint: '接收地址',
+      endpointPlaceholder: 'https://example.workers.dev/v1/report',
+      nickname: '昵称（可选）',
+      save: '保存',
+      saved: '已保存。',
+      sendNow: '立即上报',
+      sending: '上报中…',
+      lastReport: '上次上报',
+      neverReported: '还没上报',
+      reportOk: '已发送（HTTP {status}）。',
+      consent: '允许发送匿名使用计数',
+      ev_branch: '分支重发',
+      ev_capture: '候选',
+      ev_digest: '注入',
+      ev_promote: '转正',
+      ev_pageOpen: '页面打开',
+      ev_check: '检查',
+      ev_install: '安装',
+      ev_update: '更新',
+      ev_remove: '移除',
+      ev_toggle: '启停',
+      ev_report: '上报',
     }
 
     /** Fill {name} placeholders. */
@@ -235,6 +297,62 @@ window.__ModuleLoader__.load({
       const [checking, setChecking] = useState(false)
       const [updates, setUpdates] = useState({})
       const [notice, setNotice] = useState(null)
+      const [stats, setStats] = useState(null)
+      const [telemetry, setTelemetry] = useState(null)
+      const [sending, setSending] = useState(false)
+
+      const fetchStats = useCallback(() => {
+        fetch('/api/icex-plugin-center/stats', { headers: { accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((payload) => {
+            if (payload?.ok === true) {
+              setStats(payload.stats)
+              setTelemetry((current) => current ?? payload.telemetry)
+            }
+          })
+          .catch(() => {})
+      }, [])
+
+      useEffect(() => {
+        fetchStats()
+        fetch('/api/icex-plugin-center/stats/event', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ event: 'pageOpen' }),
+        }).catch(() => {})
+      }, [fetchStats])
+
+      /** Persist a telemetry change; the switch saves immediately, text fields on 保存. */
+      const saveTelemetry = useCallback(
+        async (change) => {
+          const current = telemetry ?? { enabled: false, endpoint: '', nickname: '' }
+          const next = { ...current, ...change }
+          setTelemetry(next)
+          try {
+            const payload = await api('/api/icex-plugin-center/config', { telemetry: next })
+            setTelemetry(payload.config.telemetry)
+            if (Object.keys(change).length > 0) setNotice({ kind: 'ok', text: t('saved') })
+          } catch (error) {
+            setNotice({ kind: 'error', text: error.message })
+          }
+        },
+        [telemetry, t],
+      )
+
+      /** Send one snapshot right now. */
+      const sendReport = useCallback(async () => {
+        if (sending) return
+        setSending(true)
+        try {
+          const payload = await api('/api/icex-plugin-center/report', {})
+          setNotice({ kind: 'ok', text: format(t('reportOk'), { status: payload.status ?? '' }) })
+          fetchStats()
+        } catch (error) {
+          setNotice({ kind: 'error', text: error.message })
+        } finally {
+          setSending(false)
+        }
+      }, [fetchStats, sending, t])
 
       const refresh = useCallback(() => {
         let live = true
@@ -518,6 +636,128 @@ window.__ModuleLoader__.load({
               }),
         ),
         h(
+          'section',
+          { className: 'icex-pc-stats' },
+          h(
+            'div',
+            { className: 'icex-pc-stats-head' },
+            h('h2', null, t('statsTitle')),
+            h('p', null, t('statsHint')),
+          ),
+          h(
+            'div',
+            { className: 'icex-pc-stats-grid' },
+            h(
+              'div',
+              { className: 'icex-pc-stat' },
+              h('span', null, t('installId')),
+              h('code', null, stats === null ? '—' : String(stats.installId).slice(0, 8)),
+            ),
+            h(
+              'div',
+              { className: 'icex-pc-stat' },
+              h('span', null, t('pageOpens')),
+              h('strong', null, String(stats?.manager?.pageOpen ?? 0)),
+            ),
+          ),
+          h(
+            'div',
+            { className: 'icex-pc-stats-plugins' },
+            Object.keys(stats?.plugins ?? {}).length === 0
+              ? h('p', { className: 'icex-pc-stats-empty' }, t('noActivity'))
+              : Object.entries(stats.plugins).map(([name, entry]) =>
+                  h(
+                    'div',
+                    { className: 'icex-pc-stats-row', key: name },
+                    h('span', { className: 'icex-pc-stats-name' }, shortName(name)),
+                    h(
+                      'span',
+                      { className: 'icex-pc-stats-counts' },
+                      Object.entries(entry.counts ?? {}).map(([event, count]) =>
+                        h(
+                          'span',
+                          { className: 'icex-pc-count', key: event },
+                          t('ev_' + event) + ' ' + String(count),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+          ),
+          h(
+            'div',
+            { className: 'icex-pc-report' },
+            h(
+              'div',
+              { className: 'icex-pc-report-head' },
+              h(
+                'div',
+                { className: 'icex-pc-report-text' },
+                h('strong', null, t('reportTitle')),
+                h('p', null, t('reportHint')),
+              ),
+              h(Switch, {
+                checked: telemetry?.enabled === true,
+                label: t('consent'),
+                onChange: (checked) => saveTelemetry({ enabled: checked }),
+              }),
+            ),
+            h(
+              'div',
+              { className: 'icex-pc-report-fields' },
+              h(
+                'label',
+                { className: 'icex-pc-field' },
+                h('span', null, t('endpoint')),
+                h('input', {
+                  type: 'url',
+                  value: telemetry?.endpoint ?? '',
+                  placeholder: t('endpointPlaceholder'),
+                  onChange: (event) =>
+                    setTelemetry({ ...(telemetry ?? {}), endpoint: event.target.value }),
+                }),
+              ),
+              h(
+                'label',
+                { className: 'icex-pc-field icex-pc-field-nick' },
+                h('span', null, t('nickname')),
+                h('input', {
+                  type: 'text',
+                  maxLength: 40,
+                  value: telemetry?.nickname ?? '',
+                  onChange: (event) =>
+                    setTelemetry({ ...(telemetry ?? {}), nickname: event.target.value }),
+                }),
+              ),
+              h(
+                'button',
+                { className: 'icex-pc-btn', type: 'button', onClick: () => saveTelemetry({}) },
+                t('save'),
+              ),
+              h(
+                'button',
+                {
+                  className: 'icex-pc-btn icex-pc-btn-primary',
+                  type: 'button',
+                  disabled: telemetry?.enabled !== true || sending,
+                  onClick: sendReport,
+                },
+                sending ? t('sending') : t('sendNow'),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'icex-pc-report-last' },
+              t('lastReport') +
+                '：' +
+                (stats?.lastReport === null || stats?.lastReport === undefined
+                  ? t('neverReported')
+                  : String(stats.lastReport.at ?? '').slice(0, 16).replace('T', ' ') +
+                    (stats.lastReport.ok === true ? ' · OK' : ' · ' + String(stats.lastReport.error ?? stats.lastReport.status ?? ''))),
+            ),
+          ),
+        ),
+        h(
           'footer',
           { className: 'icex-pc-footer' },
           h(
@@ -596,6 +836,29 @@ window.__ModuleLoader__.load({
       '.icex-pc-switch-knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 140ms ease; }',
       '.icex-pc-switch input:checked + .icex-pc-switch-track .icex-pc-switch-knob { transform: translateX(16px); }',
       '.icex-pc-empty { margin: 0; padding: 24px; border: 0.5px dashed var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); color: var(--dsw-alias-label-tertiary); text-align: center; }',
+      '.icex-pc-stats { margin-top: 22px; padding: 16px 14px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); background: var(--dsw-alias-bg-layer-1); }',
+      '.icex-pc-stats-head h2 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }',
+      '.icex-pc-stats-head p { margin: 2px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+      '.icex-pc-stats-grid { display: flex; gap: 10px; margin-top: 12px; }',
+      '.icex-pc-stat { display: flex; flex-direction: column; gap: 2px; min-width: 110px; padding: 8px 10px; border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); }',
+      '.icex-pc-stat span { color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
+      '.icex-pc-stat strong { font-size: 16px; line-height: 22px; font-weight: 600; }',
+      '.icex-pc-stat code { font-size: 12px; color: var(--dsw-alias-label-secondary); }',
+      '.icex-pc-stats-plugins { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }',
+      '.icex-pc-stats-row { display: flex; align-items: center; gap: 10px; padding: 4px 0; border-top: 0.5px solid var(--dsw-alias-border-l1); }',
+      '.icex-pc-stats-name { min-width: 90px; color: var(--dsw-alias-label-secondary); }',
+      '.icex-pc-stats-counts { display: flex; flex-wrap: wrap; gap: 4px; }',
+      '.icex-pc-count { padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); color: var(--dsw-alias-state-business-primary); font-size: 10px; }',
+      '.icex-pc-stats-empty { margin: 10px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
+      '.icex-pc-report { margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--dsw-alias-border-l1); }',
+      '.icex-pc-report-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }',
+      '.icex-pc-report-text { max-width: 560px; }',
+      '.icex-pc-report-text p { margin: 2px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+      '.icex-pc-report-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 10px; }',
+      '.icex-pc-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 200px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
+      '.icex-pc-field-nick { flex: 0 1 180px; }',
+      '.icex-pc-field input { height: 28px; padding: 0 8px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }',
+      '.icex-pc-report-last { margin-top: 8px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
       '.icex-pc-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 12px; border-top: 0.5px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
       '.icex-pc-footer strong { font-weight: 500; }',
       '.icex-pc-footer-error { color: var(--dsw-alias-state-error, #e5484d); }',

@@ -783,6 +783,15 @@ function registerEditorRoute(ctx) {
   })
 }
 
+/** Count one feature use through the optional plugin-center service. */
+function recordUsage(ctx, event) {
+  try {
+    ctx.get('icexStats')?.record?.('icex-dsh-memory', event)
+  } catch (error) {
+    // Statistics are optional; memory itself must keep working without them.
+  }
+}
+
 /** Apply the plugin: one prompt section, one injection, optionally one tool. */
 export function apply(ctx, config) {
   const tuning = tuningOf(config)
@@ -800,7 +809,8 @@ export function apply(ctx, config) {
     try {
       const text = userPromptOf(event)
       if (text === null) return
-      captureCandidate(text, session?.header?.cwd ?? session?.cwd ?? '', session?.id ?? '')
+      const entry = captureCandidate(text, session?.header?.cwd ?? session?.cwd ?? '', session?.id ?? '')
+      if (entry !== null) recordUsage(ctx, 'capture')
     } catch (error) {
       // Capture is best effort; never disturb the session.
     }
@@ -833,6 +843,7 @@ export function apply(ctx, config) {
           text: text,
           interpolate: false,
         })
+        recordUsage(ctx, 'digest')
       } catch (error) {
         ctx.logger?.warn?.('icex-dsh-memory: digest injection failed: ' + String(error))
       }
