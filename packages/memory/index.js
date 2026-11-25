@@ -503,8 +503,33 @@ function policy(storePaths) {
   ].join('\n')
 }
 
+/** Extract the prompt text of a `user/message` session event, or null for any other event. */
+export function userPromptOf(event) {
+  if (event?.type !== 'user/message') return null
+  // The event carries the message fields directly (`data.content`, `data.source`);
+  // older shell builds wrapped them under `data.message`, so accept both.
+  const message = event.data?.message ?? event.data
+  if (message === undefined || message?.source?.kind !== 'user') return null
+  if (!Array.isArray(message.content)) return ''
+  return message.content
+    .filter((block) => block?.type === 'text')
+    .map((block) => String(block.text ?? ''))
+    .join(' ')
+}
+
+/** The workspace recorded on the agent's session header, or null when unknown. */
+export function sessionCwdOf(agent) {
+  const cwd = agent?.session?.header?.cwd
+  return typeof cwd === 'string' && cwd !== '' ? cwd : null
+}
+
 /** Resolve the session working directory, falling back to the process cwd. */
 async function workingDirectory(ctx, agent, signal) {
+  // The session header records the workspace the person actually opened; the
+  // agent's own working directory falls back to the profile and would merge
+  // every project into one memory file.
+  const sessionCwd = sessionCwdOf(agent)
+  if (sessionCwd !== null) return sessionCwd
   try {
     if (agent !== undefined && ctx.workingDirectory !== undefined) {
       const dir = await ctx.workingDirectory.ensure(agent, signal)
@@ -773,12 +798,8 @@ export function apply(ctx, config) {
 
   ctx.on('session/event', (session, event) => {
     try {
-      if (event?.type !== 'user/message') return
-      const message = event.data?.message
-      if (message === undefined || message?.source?.kind !== 'user') return
-      const text = Array.isArray(message.content)
-        ? message.content.filter((block) => block?.type === 'text').map((block) => String(block.text ?? '')).join(' ')
-        : ''
+      const text = userPromptOf(event)
+      if (text === null) return
       captureCandidate(text, session?.header?.cwd ?? session?.cwd ?? '', session?.id ?? '')
     } catch (error) {
       // Capture is best effort; never disturb the session.

@@ -46,6 +46,15 @@ check('durable message is captured', m.looksDurable('以后所有回答都要先
 check('task message is not captured', m.looksDurable('帮我把这个文件读一下') === false)
 check('context message is not captured', m.looksDurable('<system-reminder>以后</system-reminder>') === false)
 
+// event shape: a real user/message carries content/source directly (no .message wrapper)
+const rawEvent = { type: 'user/message', data: { role: 'user', id: 'm1', content: [{ type: 'text', text: '以后所有回答都要先给结论' }], source: { kind: 'user' } } }
+check('prompt is read from direct event data', m.userPromptOf(rawEvent) === '以后所有回答都要先给结论')
+check('legacy wrapped event still reads', m.userPromptOf({ type: 'user/message', data: { message: rawEvent.data } }) === '以后所有回答都要先给结论')
+check('non-user message is ignored', m.userPromptOf({ type: 'user/message', data: { ...rawEvent.data, source: { kind: 'tool' } } }) === null)
+check('other events are ignored', m.userPromptOf({ type: 'turn/start', data: {} }) === null)
+check('session cwd comes from the header', m.sessionCwdOf({ session: { header: { cwd: '/Users/icex/wtf' } } }) === '/Users/icex/wtf')
+check('missing session cwd is null', m.sessionCwdOf({ session: {} }) === null)
+
 const queued = m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@1')
 check('candidate is queued', queued !== null && m.readPending().some((entry) => entry.id === queued.id))
 check('candidate is deduplicated', m.captureCandidate('以后所有回答都要先给结论', '/tmp/selftest', 'selftest@1') === null)

@@ -21,6 +21,12 @@
           "en": "Interface",
           "zh": "界面"
         }
+      },
+      "plugins": {
+        "title": {
+          "en": "Plugins",
+          "zh": "插件"
+        }
       }
     },
     "labels": {},
@@ -88,6 +94,45 @@
           "rail",
           "navigation",
           "window"
+        ],
+        "labels": [],
+        "sortKeys": {}
+      },
+      "versions": [
+        {
+          "version": "0.3.11",
+          "publishTimestamp": 1795590602,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {}
+        }
+      ]
+    },
+    {
+      "name": "icex-dsh-plugin-center",
+      "title": {
+        "en": "Icex Plugin Center",
+        "zh": "Icex 插件中心"
+      },
+      "description": {
+        "en": "A sidebar page that installs, updates, enables and removes the icex plugins with one click, with optional automatic updates.",
+        "zh": "侧栏里的一个独立页面：一键安装、更新、启停和移除 icex 插件，并可开启自动更新。"
+      },
+      "author": "icex",
+      "homepage": "https://github.com/icexxxxxx/dsh-plugins/tree/main/packages/plugin-center",
+      "icon": "https://raw.githubusercontent.com/icexxxxxx/dsh-plugins/main/packages/plugin-center/icon.svg",
+      "repository": {
+        "url": "https://github.com/icexxxxxx/dsh-plugins",
+        "directory": "packages/plugin-center"
+      },
+      "metadata": {
+        "category": "plugins",
+        "keywords": [
+          "plugins",
+          "installer",
+          "updater",
+          "sidebar"
         ],
         "labels": [],
         "sortKeys": {}

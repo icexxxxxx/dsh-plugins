@@ -25,3 +25,7 @@ jobs:
         run: npm publish --workspace packages/fixer --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish icex-dsh-plugin-center
+        run: npm publish --workspace packages/plugin-center --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

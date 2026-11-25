@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Icex Plugin Center",
+    "description": "Install, update, enable and remove your icex DSH plugins from one page, with automatic updates.",
+    "detail": "docs/DETAIL.md"
+  }
+}

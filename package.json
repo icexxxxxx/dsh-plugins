@@ -2,15 +2,15 @@
   "name": "@icex/dsh-plugins",
   "private": true,
   "version": "0.0.0",
-  "description": "Personal DeepSeek Harness plugins: input anchor rail + window summon, and cross-session memory.",
+  "description": "Personal DeepSeek Harness plugins: input anchor rail + window summon, cross-session memory, and a one-click plugin center.",
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "check": "node --check packages/fixer/client.js && node --check packages/fixer/index.js && node --check packages/memory/index.js",
+    "check": "node --check packages/memory/index.js && node --check packages/fixer/index.js && node --check packages/fixer/client.js && node --check packages/plugin-center/index.js && node --check packages/plugin-center/client.js",
     "selftest": "node scripts/selftest.mjs",
     "release": "node scripts/release.mjs",
-    "test": "node scripts/selftest.mjs && node scripts/test-fixer-menu.mjs && node scripts/test-fixer-bare.mjs && node scripts/test-fixer-bare-ui.mjs && node scripts/test-fixer-delete.mjs && node scripts/test-memory-panel.mjs && node scripts/test-panel-actions.mjs"
+    "test": "node scripts/selftest.mjs && node scripts/test-fixer-menu.mjs && node scripts/test-fixer-bare.mjs && node scripts/test-fixer-bare-ui.mjs && node scripts/test-fixer-delete.mjs && node scripts/test-memory-panel.mjs && node scripts/test-panel-actions.mjs && node scripts/test-plugin-center.mjs"
   }
 }

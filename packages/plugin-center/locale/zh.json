@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Icex 插件中心",
+    "description": "用一个页面安装、更新、启停你的 icex DSH 插件，并可自动更新。",
+    "detail": "docs/DETAIL.md"
+  }
+}

@@ -21,6 +21,7 @@ const PROXY = 'http://127.0.0.1:7890'
 const PACKAGES = [
   { dir: 'packages/memory', name: 'icex-dsh-memory' },
   { dir: 'packages/fixer', name: 'icex-dsh-fixer' },
+  { dir: 'packages/plugin-center', name: 'icex-dsh-plugin-center' },
 ]
 
 const argv = process.argv.slice(2)
@@ -99,6 +100,7 @@ async function main() {
   execFileSync(process.execPath, [join(root, 'scripts/test-fixer-edit-ui.mjs')], { cwd: root, stdio: 'inherit' })
   execFileSync(process.execPath, [join(root, 'scripts/test-memory-panel.mjs')], { cwd: root, stdio: 'inherit' })
   execFileSync(process.execPath, [join(root, 'scripts/test-panel-actions.mjs')], { cwd: root, stdio: 'inherit' })
+  execFileSync(process.execPath, [join(root, 'scripts/test-plugin-center.mjs')], { cwd: root, stdio: 'inherit' })
 
   const versions = Object.fromEntries(PACKAGES.map((pkg) => [pkg.name, readJson(pkg.dir + '/package.json').version]))
   const current = Object.values(versions).sort(compareSemver).at(-1)
@@ -163,7 +165,7 @@ async function main() {
   await verifyIndex(version)
 
   log('done: ' + tag + ' published for ' + PACKAGES.map((pkg) => pkg.name).join(' and '))
-  log('installed profile may need: dsh plugin --profile desktop add icex-dsh-memory@' + version)
+  log('installed profile may need: dsh plugin --profile desktop add ' + PACKAGES[0].name + '@' + version)
 }
 
 async function waitForRun(tag) {
