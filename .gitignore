@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.log
 .install-backup/
+cloudflare/wrangler.toml
+cloudflare/.wrangler/
+cloudflare/.dev.vars
