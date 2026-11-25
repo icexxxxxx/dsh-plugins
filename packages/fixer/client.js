@@ -1443,11 +1443,11 @@ window.__ModuleLoader__.load({
           showBranchToast(t('edit.failed', { message: reply?.error ?? t('edit.unavailable') }))
           return
         }
-        openEditor(turn, bubble, reply.text)
+        openEditor(turn, row, bubble, reply.text)
       }
 
       /** Build the bubble-sized editor; the original bubble stays hidden below. */
-      function openEditor(turn, bubble, original) {
+      function openEditor(turn, row, bubble, original) {
         if (overlay !== null) return
         const element = document.createElement('div')
         element.className = 'icex-edit-overlay'
@@ -1499,9 +1499,12 @@ window.__ModuleLoader__.load({
         function reposition() {
           if (overlay === null) return
           const rect = bubble.getBoundingClientRect()
-          element.style.left = Math.round(rect.left) + 'px'
+          const column = row.getBoundingClientRect()
+          const width = column.width > 0 ? column.width : rect.width
+          const left = column.width > 0 ? column.left : rect.left
+          element.style.left = Math.round(left) + 'px'
           element.style.top = Math.round(rect.top) + 'px'
-          element.style.width = Math.round(rect.width) + 'px'
+          element.style.width = Math.round(width) + 'px'
           element.style.minHeight = Math.round(Math.max(96, rect.height)) + 'px'
           const box = element.getBoundingClientRect()
           if (box.top + box.height > window.innerHeight - 12) {

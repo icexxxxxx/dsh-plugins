@@ -271,6 +271,8 @@ const overlay = body.children.find((child) => child.classList.contains('icex-edi
 check('opens an overlay in the body', overlay !== undefined)
 const textarea = overlay?.children.find((child) => child.classList.contains('icex-edit-textarea'))
 check('seeds the editor with the original text', textarea?.value === 'old question', textarea?.value)
+check('editor spans the message column', overlay?.style.width === '600px', overlay?.style.width)
+check('editor starts at the column left', overlay?.style.left === '100px', overlay?.style.left)
 check('hides the original bubble', rows[0].bubble.style.visibility === 'hidden')
 
 // Shift+Enter keeps editing, Enter sends
