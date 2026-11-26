@@ -191,6 +191,7 @@ function runApplyForRoutes() {
   const provided = []
   const injected = []
   const paths = []
+  const methods = []
   const handlers = new Map()
   const disposers = []
   const ctx = {
@@ -210,7 +211,7 @@ function runApplyForRoutes() {
     inject: (deps, run) => {
       injected.push(deps)
       const scope = {
-        connection: { fetch: { register: (options) => { paths.push(options.path); handlers.set(options.path, options.fetch); return () => {} } } },
+        connection: { fetch: { register: (options) => { paths.push(options.path); methods.push(options.methods); handlers.set(options.path, options.fetch); return () => {} } } },
         effect: (fn) => {
           const dispose = fn()
           disposers.push(dispose)
@@ -228,6 +229,7 @@ function runApplyForRoutes() {
     provided,
     injected,
     paths,
+    methods,
     handlers,
     cleanup: () => { for (const dispose of disposers) if (typeof dispose === 'function') dispose() },
   }
@@ -242,6 +244,8 @@ await check('apply provides stats and registers routes with only the connection 
     assert.ok(result.paths.includes('/api/icex-plugin-center/ping'))
     assert.ok(result.paths.includes('/api/icex-plugin-center/state'))
     assert.ok(result.paths.includes('/api/icex-plugin-center/stats'))
+    assert.ok(result.methods.length > 0)
+    for (const entry of result.methods) assert.ok(Array.isArray(entry), 'route methods must be an array')
   } finally {
     result.cleanup()
   }

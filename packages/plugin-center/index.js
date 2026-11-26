@@ -488,9 +488,10 @@ async function readBody(request) {
   }
 }
 
-/** Register one buffered route. */
+/** Register one buffered route. The route table only matches methods given as an array. */
 function route(connection, path, methods, fetch) {
-  return connection.fetch.register({ path, methods, requestBody: 'buffered', fetch })
+  const list = Array.isArray(methods) ? methods : [methods]
+  return connection.fetch.register({ path, methods: list, requestBody: 'buffered', fetch })
 }
 
 /** Persist a check result, keeping the previous one when the new check failed entirely. */
