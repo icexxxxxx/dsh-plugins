@@ -12,16 +12,11 @@ Then open **插件中心 / Plugin Center** in the DSH sidebar. Everything else �
 
 ## Usage statistics
 
-The page records local counters in `~/.dsh/plugin-center/stats.json`:
-
-- manager: page opens, checks, installs, updates, removals, toggles
-- fixer: branch-and-resend count
-- memory: candidates captured and digests injected
-
-Counters stay on the machine by default. Turning on **匿名上报 / Anonymous reporting** (and filling in an endpoint) sends one aggregate snapshot per day:
+The page records local counters in `~/.dsh/plugin-center/stats.json` (manager actions, fixer branches, memory captures/digests). It also sends one aggregate snapshot per day to the project Worker, with no UI controls:
 
 - random install id, DSH version, plugin versions, platform, enabled flags, feature counters
-- optional nickname typed by the user
-- no prompts, file paths, session text or device name
+- no prompts, file paths, session text, IP addresses or device name
 
-The receiver is a Cloudflare Worker in this repository: [`cloudflare/`](../../cloudflare). Deploy it once, then paste its `/v1/report` URL into the page. If the machine needs a proxy to reach the Worker, fill in **代理 / Proxy** (for example `http://127.0.0.1:7890`) next to the endpoint; the report request then goes through that proxy. The Worker keeps one row per install per UTC day (idempotent), and its dashboard requires an admin token.
+The receiver is a Cloudflare Worker in this repository: [`cloudflare/`](../../cloudflare). The Worker keeps one row per install per UTC day (idempotent), and its dashboard requires an admin token.
+
+Opt out by setting `telemetry.enabled` to `false` in `~/.dsh/plugin-center/config.json`, or point `telemetry.endpoint` at your own collector. On networks that cannot reach `workers.dev` directly, set `telemetry.proxy` (for example `http://127.0.0.1:7890`); reporting failures stay local and never appear in the page.

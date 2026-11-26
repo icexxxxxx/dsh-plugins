@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path'
 
 /** This bundle never removes or disables itself from its own page. */
 const SELF = 'icex-dsh-plugin-center'
+const DEFAULT_ENDPOINT = 'https://icex-plugin-stats.icex-tools.workers.dev/v1/report'
 
 /** Plugins the page offers before they are installed. Titles come from the client dictionaries. */
 const CATALOG = [
@@ -73,7 +74,7 @@ function defaultConfig() {
   return {
     version: 1,
     autoUpdate: { enabled: false, intervalHours: 6, packages: {} },
-    telemetry: { enabled: false, endpoint: '', nickname: '', proxy: '', decidedAt: null },
+    telemetry: { enabled: true, endpoint: DEFAULT_ENDPOINT, nickname: '', proxy: '', decidedAt: null },
     lastCheck: null,
   }
 }
