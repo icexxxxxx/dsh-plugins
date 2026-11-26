@@ -155,6 +155,8 @@ await check('readState lists the catalog first and marks absent entries', async 
   assert.equal(memory.installed, false)
   assert.equal(memory.self, false)
   assert.equal(state.bundles.find((item) => item.name === 'icex-dsh-plugin-center').self, true)
+  assert.match(memory.summary, /跨会话记忆/)
+  assert.match(state.bundles.find((item) => item.name === 'icex-dsh-fixer').summary, /分支重发/)
 })
 
 await check('autoUpdatePass updates only enabled packages and records the check', async () => {
@@ -297,6 +299,10 @@ await check('telemetry config validates endpoint and trims nickname', () => {
   assert.equal(config.telemetry.nickname, '小明')
   const good = t.normaliseConfig({ telemetry: { endpoint: 'https://example.workers.dev/v1/report' } })
   assert.equal(good.telemetry.endpoint, 'https://example.workers.dev/v1/report')
+  const proxied = t.normaliseConfig({ telemetry: { proxy: ' http://127.0.0.1:7890 ' } })
+  assert.equal(proxied.telemetry.proxy, 'http://127.0.0.1:7890/')
+  const badProxy = t.normaliseConfig({ telemetry: { proxy: 'socks5://127.0.0.1:1080' } })
+  assert.equal(badProxy.telemetry.proxy, '')
 })
 
 await check('reportNow sends the aggregate snapshot once reporting is on', async () => {

@@ -55,6 +55,7 @@ window.__ModuleLoader__.load({
       newVersion: 'New version',
       selfTitle: 'Plugin Center',
       self: 'This page',
+      listTitle: 'Installed plugins',
       perPlugin: 'Auto-update',
       lastCheck: 'Last check',
       never: 'Never checked',
@@ -81,6 +82,8 @@ window.__ModuleLoader__.load({
       endpoint: 'Endpoint',
       endpointPlaceholder: 'https://example.workers.dev/v1/report',
       nickname: 'Nickname (optional)',
+      proxy: 'Proxy (optional)',
+      proxyPlaceholder: 'http://127.0.0.1:7890',
       save: 'Save',
       saved: 'Saved.',
       sendNow: 'Send now',
@@ -129,6 +132,7 @@ window.__ModuleLoader__.load({
       newVersion: '新版本',
       selfTitle: '插件中心',
       self: '当前页面',
+      listTitle: '已安装插件',
       perPlugin: '自动更新',
       lastCheck: '上次检查',
       never: '还没检查过',
@@ -155,6 +159,8 @@ window.__ModuleLoader__.load({
       endpoint: '接收地址',
       endpointPlaceholder: 'https://example.workers.dev/v1/report',
       nickname: '昵称（可选）',
+      proxy: '代理（可选）',
+      proxyPlaceholder: 'http://127.0.0.1:7890',
       save: '保存',
       saved: '已保存。',
       sendNow: '立即上报',
@@ -196,6 +202,42 @@ window.__ModuleLoader__.load({
     function titleOf(item, t) {
       if (item.name === SELF) return t('selfTitle')
       return item.title !== '' ? item.title : shortName(item.name)
+    }
+
+    /** Per-plugin tint keeps the three cards distinguishable at a glance. */
+    const TINTS = {
+      'icex-dsh-fixer': '212, 106, 60',
+      'icex-dsh-memory': '126, 96, 220',
+      'icex-dsh-plugin-center': '46, 158, 108',
+    }
+
+    /** Simple line glyphs, drawn inline so the page needs no extra assets. */
+    function Glyph(props) {
+      const size = props.size ?? 20
+      const common = {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.7,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      }
+      if (props.name === 'icex-dsh-fixer') {
+        return h('svg', common, h('path', { d: 'M4 5v14' }), h('path', { d: 'M3 19l4.5-1.2 9.2-9.2-3.3-3.3-9.2 9.2L3 19z' }), h('path', { d: 'M13.4 5.7l3.3 3.3' }))
+      }
+      if (props.name === 'icex-dsh-memory') {
+        return h('svg', common, h('path', { d: 'M12 4l8 4-8 4-8-4 8-4z' }), h('path', { d: 'M4 12l8 4 8-4' }), h('path', { d: 'M4 16l8 4 8-4' }))
+      }
+      return h('svg', common, h('rect', { x: 4, y: 4, width: 7, height: 7, rx: 1.6 }), h('rect', { x: 13, y: 4, width: 7, height: 7, rx: 1.6 }), h('rect', { x: 4, y: 13, width: 7, height: 7, rx: 1.6 }), h('rect', { x: 13, y: 13, width: 7, height: 7, rx: 1.6 }))
+    }
+
+    /** Tint for the icon tile; unknown plugins fall back to the accent colour. */
+    function tintOf(name) {
+      const tint = TINTS[name]
+      return typeof tint === 'string' ? tint : 'var(--dsw-alias-state-business-primary)'
     }
 
     /** Status key for one bundle. */
@@ -524,6 +566,12 @@ window.__ModuleLoader__.load({
           ),
         ),
         h(
+          'div',
+          { className: 'icex-pc-section-head' },
+          h('h2', null, t('listTitle')),
+          h('span', null, String(bundles.length)),
+        ),
+        h(
           'section',
           { className: 'icex-pc-list' },
           bundles.length === 0
@@ -535,11 +583,15 @@ window.__ModuleLoader__.load({
                 const cardBusy = busy === item.name
                 return h(
                   'article',
-                  { className: 'icex-pc-card', key: item.name },
+                  { className: 'icex-pc-card' + (item.installed ? '' : ' is-absent'), key: item.name },
                   h(
                     'div',
                     { className: 'icex-pc-card-head' },
-                    h('span', { className: 'icex-pc-card-glyph' }, shortName(item.name).slice(0, 2).toUpperCase()),
+                    h(
+                      'span',
+                      { className: 'icex-pc-card-icon', style: { '--pc-tint': tintOf(item.name) } },
+                      h(Glyph, { name: item.name, size: 18 }),
+                    ),
                     h(
                       'div',
                       { className: 'icex-pc-card-title' },
@@ -547,10 +599,10 @@ window.__ModuleLoader__.load({
                         'div',
                         { className: 'icex-pc-card-name' },
                         h('span', null, titleOf(item, t)),
-                        item.version !== null ? h('code', null, 'v' + item.version) : null,
+                        item.version !== null ? h('span', { className: 'icex-pc-version' }, 'v' + item.version) : null,
                         item.self ? h('span', { className: 'icex-pc-self' }, t('self')) : null,
                       ),
-                      h('p', { className: 'icex-pc-card-desc' }, item.description),
+                      h('p', { className: 'icex-pc-card-desc' }, item.summary !== '' ? item.summary : item.description),
                     ),
                     h(StatusPill, { status, t }),
                   ),
@@ -719,6 +771,18 @@ window.__ModuleLoader__.load({
               ),
               h(
                 'label',
+                { className: 'icex-pc-field icex-pc-field-proxy' },
+                h('span', null, t('proxy')),
+                h('input', {
+                  type: 'url',
+                  value: telemetry?.proxy ?? '',
+                  placeholder: t('proxyPlaceholder'),
+                  onChange: (event) =>
+                    setTelemetry({ ...(telemetry ?? {}), proxy: event.target.value }),
+                }),
+              ),
+              h(
+                'label',
                 { className: 'icex-pc-field icex-pc-field-nick' },
                 h('span', null, t('nickname')),
                 h('input', {
@@ -794,25 +858,30 @@ window.__ModuleLoader__.load({
       '.icex-pc { box-sizing: border-box; width: 100%; height: 100%; max-width: 860px; margin: 0 auto; padding: 28px 32px 40px; overflow-y: auto; color: var(--dsw-alias-label-primary); font-size: 13px; line-height: 20px; }',
       '.icex-pc * { box-sizing: border-box; }',
       '.icex-pc-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }',
-      '.icex-pc-header-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--dsw-radius-lg, 10px); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent); color: var(--dsw-alias-state-business-primary); }',
-      '.icex-pc-title { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }',
+      '.icex-pc-header-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(140deg, color-mix(in srgb, var(--dsw-alias-state-business-primary) 22%, transparent), color-mix(in srgb, var(--dsw-alias-state-business-primary) 8%, transparent)); color: var(--dsw-alias-state-business-primary); }',
+      '.icex-pc-title { margin: 0; font-size: 20px; line-height: 28px; font-weight: 650; letter-spacing: -0.01em; }',
       '.icex-pc-subtitle { margin: 2px 0 0; color: var(--dsw-alias-label-secondary); }',
-      '.icex-pc-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; margin-bottom: 20px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); background: var(--dsw-alias-bg-layer-1); }',
+      '.icex-pc-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 22px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); }',
       '.icex-pc-toolbar-main { display: flex; align-items: center; gap: 10px; }',
       '.icex-pc-toolbar-text { display: flex; flex-direction: column; gap: 1px; }',
       '.icex-pc-toolbar-text span { color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
       '.icex-pc-toolbar-side { display: flex; align-items: center; gap: 8px; }',
       '.icex-pc-interval { display: flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-tertiary); font-size: 11px; }',
       '.icex-pc-interval select { height: 28px; padding: 0 6px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }',
-      '.icex-pc-list { display: flex; flex-direction: column; gap: 12px; }',
-      '.icex-pc-card { padding: 14px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); background: var(--dsw-alias-bg-layer-1); }',
-      '.icex-pc-card-head { display: flex; align-items: flex-start; gap: 10px; }',
-      '.icex-pc-card-glyph { flex: none; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: var(--dsw-radius-md, 6px); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); color: var(--dsw-alias-state-business-primary); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }',
+      '.icex-pc-list { display: flex; flex-direction: column; gap: 10px; }',
+      '.icex-pc-section-head { display: flex; align-items: baseline; gap: 8px; margin: 0 0 10px; }',
+      '.icex-pc-section-head h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-secondary); }',
+      '.icex-pc-section-head span { min-width: 18px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 14%, transparent); color: var(--dsw-alias-label-tertiary); font-size: 10px; line-height: 16px; text-align: center; }',
+      '.icex-pc-card { padding: 14px 16px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); transition: border-color 140ms ease, background 140ms ease; }',
+      '.icex-pc-card:hover { border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 28%, var(--dsw-alias-border-l1)); }',
+      '.icex-pc-card.is-absent { border-style: dashed; background: transparent; }',
+      '.icex-pc-card-head { display: flex; align-items: flex-start; gap: 12px; }',
+      '.icex-pc-card-icon { flex: none; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: color-mix(in srgb, rgb(var(--pc-tint)) 13%, transparent); color: rgb(var(--pc-tint)); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, rgb(var(--pc-tint)) 22%, transparent); }',
       '.icex-pc-card-title { flex: 1; min-width: 0; }',
-      '.icex-pc-card-name { display: flex; align-items: center; gap: 6px; font-weight: 600; }',
-      '.icex-pc-card-name code, .icex-pc-update code { padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 14%, transparent); color: var(--dsw-alias-label-secondary); font-size: 10px; font-weight: 400; }',
+      '.icex-pc-card-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }',
+      '.icex-pc-version, .icex-pc-update code { padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 10%, transparent); color: var(--dsw-alias-label-tertiary); font-size: 10px; font-weight: 500; line-height: 16px; }',
       '.icex-pc-self { padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 14%, transparent); color: var(--dsw-alias-label-tertiary); font-size: 10px; font-weight: 400; }',
-      '.icex-pc-card-desc { margin: 2px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
+      '.icex-pc-card-desc { margin: 3px 0 0; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 17px; }',
       '.icex-pc-pill { flex: none; display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 10px; line-height: 1; }',
       '.icex-pc-pill-running { background: color-mix(in srgb, var(--dsw-alias-state-success, #34c759) 16%, transparent); color: var(--dsw-alias-state-success, #2f9e50); }',
       '.icex-pc-pill-stopped { background: color-mix(in srgb, var(--dsw-alias-label-tertiary) 16%, transparent); color: var(--dsw-alias-label-secondary); }',
@@ -820,6 +889,7 @@ window.__ModuleLoader__.load({
       '.icex-pc-update { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--dsw-alias-state-business-primary); font-size: 11px; }',
       '.icex-pc-update-time, .icex-pc-current { color: var(--dsw-alias-label-tertiary); }',
       '.icex-pc-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }',
+      '.icex-pc-card-actions .icex-pc-btn { height: 26px; padding: 0 11px; font-size: 11.5px; }',
       '.icex-pc-btn { height: 28px; padding: 0 12px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; cursor: pointer; }',
       '.icex-pc-btn:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); }',
       '.icex-pc-btn:disabled { opacity: 0.55; cursor: default; }',
@@ -836,12 +906,13 @@ window.__ModuleLoader__.load({
       '.icex-pc-switch-knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 140ms ease; }',
       '.icex-pc-switch input:checked + .icex-pc-switch-track .icex-pc-switch-knob { transform: translateX(16px); }',
       '.icex-pc-empty { margin: 0; padding: 24px; border: 0.5px dashed var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); color: var(--dsw-alias-label-tertiary); text-align: center; }',
-      '.icex-pc-stats { margin-top: 22px; padding: 16px 14px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-lg, 10px); background: var(--dsw-alias-bg-layer-1); }',
+      '.icex-pc-stats { margin-top: 24px; padding: 16px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); }',
       '.icex-pc-stats-head h2 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }',
       '.icex-pc-stats-head p { margin: 2px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
-      '.icex-pc-stats-grid { display: flex; gap: 10px; margin-top: 12px; }',
-      '.icex-pc-stat { display: flex; flex-direction: column; gap: 2px; min-width: 110px; padding: 8px 10px; border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); }',
+      '.icex-pc-stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }',
+      '.icex-pc-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); }',
       '.icex-pc-stat span { color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
+      '.icex-pc-stat em { font-style: normal; font-size: 11px; color: var(--dsw-alias-label-secondary); line-height: 16px; overflow-wrap: anywhere; }',
       '.icex-pc-stat strong { font-size: 16px; line-height: 22px; font-weight: 600; }',
       '.icex-pc-stat code { font-size: 12px; color: var(--dsw-alias-label-secondary); }',
       '.icex-pc-stats-plugins { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }',
@@ -856,7 +927,8 @@ window.__ModuleLoader__.load({
       '.icex-pc-report-text p { margin: 2px 0 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }',
       '.icex-pc-report-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 10px; }',
       '.icex-pc-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 200px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
-      '.icex-pc-field-nick { flex: 0 1 180px; }',
+      '.icex-pc-field-proxy { flex: 0 1 220px; }',
+      '.icex-pc-field-nick { flex: 0 1 160px; }',
       '.icex-pc-field input { height: 28px; padding: 0 8px; border: 0.5px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md, 6px); background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }',
       '.icex-pc-report-last { margin-top: 8px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }',
       '.icex-pc-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 12px; border-top: 0.5px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-tertiary); font-size: 11px; }',

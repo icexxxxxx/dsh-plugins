@@ -24,4 +24,4 @@ Counters stay on the machine by default. Turning on **匿名上报 / Anonymous r
 - optional nickname typed by the user
 - no prompts, file paths, session text or device name
 
-The receiver is a Cloudflare Worker in this repository: [`cloudflare/`](../../cloudflare). Deploy it once, then paste its `/v1/report` URL into the page. The Worker keeps one row per install per UTC day (idempotent), and its dashboard requires an admin token.
+The receiver is a Cloudflare Worker in this repository: [`cloudflare/`](../../cloudflare). Deploy it once, then paste its `/v1/report` URL into the page. If the machine needs a proxy to reach the Worker, fill in **代理 / Proxy** (for example `http://127.0.0.1:7890`) next to the endpoint; the report request then goes through that proxy. The Worker keeps one row per install per UTC day (idempotent), and its dashboard requires an admin token.

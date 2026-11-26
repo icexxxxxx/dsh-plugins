@@ -17,9 +17,21 @@ const SELF = 'icex-dsh-plugin-center'
 
 /** Plugins the page offers before they are installed. Titles come from the client dictionaries. */
 const CATALOG = [
-  { name: 'icex-dsh-fixer', description: '输入锚点导航、编辑已发消息并分支重发、右 Option 唤起窗口。' },
-  { name: 'icex-dsh-memory', description: '跨会话记忆：自动发掘、候选确认、新会话注入。' },
-  { name: SELF, description: '在一个页面里安装、更新、启停 icex 插件，并可自动更新。' },
+  {
+    name: 'icex-dsh-fixer',
+    title: 'Fixer',
+    summary: '编辑已发消息并分支重发；左侧锚点跳转输入，双击右 Option 唤起窗口。',
+  },
+  {
+    name: 'icex-dsh-memory',
+    title: 'Memory',
+    summary: '跨会话记忆：自动发掘候选、确认后注入新会话。',
+  },
+  {
+    name: SELF,
+    title: 'Plugin Center',
+    summary: '一键安装、更新、启停 icex 插件，支持自动更新与匿名使用统计。',
+  },
 ]
 
 const DSH_HOME = process.env.DSH_HOME && process.env.DSH_HOME !== '' ? process.env.DSH_HOME : join(homedir(), '.dsh')
@@ -28,7 +40,7 @@ const STATS_FILE = join(DSH_HOME, 'plugin-center', 'stats.json')
 const HOST_LOG = join(DSH_HOME, 'plugin-center', 'host.log')
 const FIRST_DELAY_MS = 20_000
 const REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000
-const REPORT_TIMEOUT_MS = 10_000
+const REPORT_TIMEOUT_MS = 30_000
 const MIN_INTERVAL_HOURS = 1
 const MAX_INTERVAL_HOURS = 168
 
@@ -61,7 +73,7 @@ function defaultConfig() {
   return {
     version: 1,
     autoUpdate: { enabled: false, intervalHours: 6, packages: {} },
-    telemetry: { enabled: false, endpoint: '', nickname: '', decidedAt: null },
+    telemetry: { enabled: false, endpoint: '', nickname: '', proxy: '', decidedAt: null },
     lastCheck: null,
   }
 }
@@ -88,6 +100,7 @@ function normaliseConfig(raw) {
     config.telemetry.enabled = telemetry.enabled === true
     config.telemetry.endpoint = cleanEndpoint(telemetry.endpoint)
     config.telemetry.nickname = String(telemetry.nickname ?? '').trim().slice(0, 40)
+    config.telemetry.proxy = cleanEndpoint(telemetry.proxy)
     config.telemetry.decidedAt = typeof telemetry.decidedAt === 'string' ? telemetry.decidedAt : null
   }
   config.lastCheck = raw.lastCheck ?? null
@@ -304,12 +317,29 @@ async function reportNow(manager, options = {}) {
   const payload = await buildReport(manager)
   const at = new Date().toISOString()
   const stats = readStats()
+  let dispatcher = null
   try {
+    if (telemetry.proxy !== '') {
+      try {
+        const { ProxyAgent } = await import('undici')
+        dispatcher = new ProxyAgent(telemetry.proxy)
+      } catch (error) {
+        stats.lastReport = {
+          at,
+          ok: false,
+          error: '代理组件不可用，请检查代理地址。',
+          automatic: options.automatic === true,
+        }
+        writeStats(stats)
+        return { ok: false, code: 'proxy-unavailable', message: stats.lastReport.error }
+      }
+    }
     const response = await fetch(telemetry.endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify({ ...payload, automatic: options.automatic === true }),
       signal: AbortSignal.timeout(REPORT_TIMEOUT_MS),
+      ...(dispatcher === null ? {} : { dispatcher }),
     })
     stats.lastReport = {
       at,
@@ -321,14 +351,21 @@ async function reportNow(manager, options = {}) {
     recordManager('report')
     return { ok: response.ok, status: response.status }
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     stats.lastReport = {
       at,
       ok: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: message === 'The operation was aborted due to timeout' ? '上报超时：请检查网络或填写代理地址。' : message,
       automatic: options.automatic === true,
     }
     writeStats(stats)
     return { ok: false, code: 'report-failed', message: stats.lastReport.error }
+  } finally {
+    try {
+      if (dispatcher !== null && typeof dispatcher.close === 'function') await dispatcher.close()
+    } catch (error) {
+      // The report result is already recorded; closing a proxy is best effort.
+    }
   }
 }
 
@@ -373,7 +410,8 @@ async function readState(manager) {
       return {
         name,
         title: entry?.title ?? '',
-        description: entry?.description ?? '',
+        summary: entry?.summary ?? '',
+        description: entry?.summary ?? entry?.description ?? '',
         version: null,
         installed: false,
         enabled: false,
@@ -387,7 +425,8 @@ async function readState(manager) {
     return {
       name,
       title: entry?.title ?? '',
-      description: bundle.description ?? entry?.description ?? '',
+      summary: entry?.summary ?? '',
+      description: entry?.summary ?? bundle.description ?? entry?.description ?? '',
       version: bundle.version ?? null,
       installed: bundle.installed === true,
       enabled: bundle.enabled === true,
@@ -736,6 +775,9 @@ export function apply(ctx) {
             }
             if (Object.prototype.hasOwnProperty.call(telemetry, 'nickname')) {
               current.telemetry.nickname = String(telemetry.nickname ?? '').trim().slice(0, 40)
+            }
+            if (Object.prototype.hasOwnProperty.call(telemetry, 'proxy')) {
+              current.telemetry.proxy = cleanEndpoint(telemetry.proxy)
             }
           }
           writeConfig(current)
