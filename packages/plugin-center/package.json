@@ -1,6 +1,6 @@
 {
   "name": "icex-dsh-plugin-center",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "A sidebar page that installs, updates, enables and removes icex DSH plugins with one click, and keeps them updated automatically.",
   "type": "module",
   "exports": {
